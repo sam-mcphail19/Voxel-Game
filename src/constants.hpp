@@ -1,0 +1,20 @@
+#pragma once
+
+#define WORLD_HEIGHT 128
+#define GRAVITY 0.01
+#define CHUNK_RENDER_DISTANCE 4
+#define CHUNK_SIZE 16
+#define CHUNK_HEIGHT 128
+#define CHUNK_BLOCK_COUNT CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT
+#define CHUNK_RENDER_DISTANCE_IN_BLOCKS CHUNK_RENDER_DISTANCE * CHUNK_SIZE
+#define MOUSE_SENS 0.24f
+#define MOVEMENT_SPEED 0.15f
+#define JUMP_SPEED 0.25f
+#define CREATIVE_MOVEMENT_SPEED 0.35f
+
+#define MODEL_UNIFORM "u_model"
+#define VIEW_UNIFORM "u_view"
+#define PROJ_UNIFORM "u_projection"
+#define CURR_TIME_UNIFORM "u_currTime" 
+#define IS_SELECTED_BLOCK_UNIFORM "u_isSelectedBlock"
+#define SELECTED_BLOCK_UNIFORM "u_selectedBlock"
