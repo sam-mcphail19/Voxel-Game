@@ -15,6 +15,8 @@ namespace voxel_game
 		float pitch;
 		float yaw;
 		glm::vec3 movement;
+		bool mouseOneDown;
+		bool mouseTwoDown;
 	};
 
 	class Player

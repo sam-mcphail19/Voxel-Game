@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <GL/glew.h>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/vec2.hpp>
@@ -59,7 +60,7 @@ namespace voxel_game::graphics
 		std::vector<GLuint> m_indices;
 
 		Texture *m_texture;
-		voxel_game::physics::Transform *m_transform;
+		physics::Transform m_transform;
 
 		GLuint m_vao;
 		GLuint m_ibo;
@@ -70,13 +71,14 @@ namespace voxel_game::graphics
 
 	private:
 		void init();
-		float *createFloatBuffer();
-		int *createIntBuffer();
+		std::vector<float> createFloatBuffer();
+		std::vector<int> createIntBuffer();
 
 	public:
-		Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, voxel_game::physics::Transform *transform, Texture *texture);
+		Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, physics::Transform transform, Texture *texture);
+		~Mesh();
 		void render();
-		voxel_game::physics::Transform getTransform();
+		physics::Transform getTransform();
 		std::vector<Vertex> getVertices();
 		std::vector<GLuint> getIndices();
 		int getVertexCount();

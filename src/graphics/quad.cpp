@@ -107,12 +107,12 @@ namespace voxel_game::graphics
 		{Direction::BOTTOM, 40},
 	};
 
-	Quad *Quad::createQuad(physics::Transform *transform, Texture *texture)
+	Quad *Quad::createQuad(physics::Transform transform, Texture *texture)
 	{
 		return new Quad(*createVertices(), indices, transform, texture);
 	}
 
-	Quad *Quad::createBlockQuad(world::Block block, physics::Transform *transform, Direction direction, AtlasTexture texture)
+	Quad *Quad::createBlockQuad(world::Block block, physics::Transform transform, Direction direction, AtlasTexture texture)
 	{
 		return new Quad(*createBlockQuadVertices(block, direction, texture), indices, transform, loadTextureAtlas());
 	}

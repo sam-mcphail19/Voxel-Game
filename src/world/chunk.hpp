@@ -26,7 +26,7 @@ namespace voxel_game::world
 	public:
 		Chunk(BlockPos chunkCoord, World *world);
 		void updateMesh(ChunkManager &chunkManager);
-		void putBlock(BlockPos pos, BlockTypeId type);
+		void putBlock(Block block);
 		BlockTypeId getBlock(int x, int y, int z);
 		BlockTypeId getBlock(BlockPos blockPos);
 		BlockPos getOrigin();

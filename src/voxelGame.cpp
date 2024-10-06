@@ -13,7 +13,7 @@ namespace voxel_game
 
 		m_player = new Player(glm::vec3(0, 45, 0));
 
-		voxel_game::physics::Transform *crosshairTransform = new voxel_game::physics::Transform(
+		physics::Transform crosshairTransform(
 			glm::vec3(-0.5, -0.5, 0),
 			glm::mat4(1),
 			glm::vec3(9.f/16, 1, 1) * glm::vec3(0.05)

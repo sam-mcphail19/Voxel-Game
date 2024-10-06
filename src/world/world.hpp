@@ -26,6 +26,9 @@ namespace voxel_game::world
 		Player m_player;
 
 		BlockTypeId getBlock(BlockPos blockPos);
+		void removeBlock(BlockPos blockPos);
+		void putBlock(Block block);
+
 		BlockPos getChunkCoord(BlockPos pos);
 		// TODO: rename
 		Block getBlockLookingAt();
@@ -33,6 +36,7 @@ namespace voxel_game::world
 		// TODO: rename
 		Block raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock);
 
+		void updateChunkMesh(Chunk* chunk);
 		void generateChunk(BlockPos chunkCoord);
 
 	public:

@@ -11,7 +11,7 @@ namespace voxel_game::world
         for (int i = 0; i < CHUNK_BLOCK_COUNT; i++)
         {
             BlockPos pos = to3dIndex(i);
-            chunk.putBlock(pos, getBlockType(origin + pos));
+            chunk.putBlock(Block{pos, getBlockType(origin + pos)});
         }
         const auto end = std::chrono::system_clock::now();
         int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

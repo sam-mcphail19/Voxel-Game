@@ -2,12 +2,23 @@
 
 namespace voxel_game::graphics
 {
-	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, voxel_game::physics::Transform *transform, Texture *texture)
+	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, physics::Transform transform, Texture *texture)
 		: m_vertices(vertices),
 		  m_indices(indices),
 		  m_transform(transform),
 		  m_texture(texture),
 		  m_isInit(false) {}
+
+	Mesh::~Mesh()
+	{
+		if (m_isInit)
+		{
+			glDeleteBuffers(1, &m_fVbo);
+			glDeleteBuffers(1, &m_iVbo);
+			glDeleteBuffers(1, &m_ibo);
+			glDeleteVertexArrays(1, &m_vao);
+		}
+	}
 
 	void Mesh::render()
 	{
@@ -47,8 +58,8 @@ namespace voxel_game::graphics
 		glEnableVertexAttribArray(7);
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_fVbo);
-		GLfloat *floatBuffer = createFloatBuffer();
-		glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * VERTEX_FLOAT_SIZE * sizeof(float), floatBuffer, GL_STATIC_DRAW);
+		std::vector<float> floatBuffer = createFloatBuffer();
+		glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * VERTEX_FLOAT_SIZE * sizeof(float), &floatBuffer[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(GLuint), m_indices.data(), GL_STATIC_DRAW);
@@ -62,8 +73,8 @@ namespace voxel_game::graphics
 		glVertexAttribPointer(2, UV_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void *)((POS_SIZE + NORMAL_SIZE) * sizeof(float)));
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_iVbo);
-		int *intBuffer = createIntBuffer();
-		glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * VERTEX_INT_SIZE * sizeof(int), intBuffer, GL_STATIC_DRAW);
+		std::vector<int> intBuffer = createIntBuffer();
+		glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * VERTEX_INT_SIZE * sizeof(int), &intBuffer[0], GL_STATIC_DRAW);
 
 		int intBufferStride = VERTEX_INT_SIZE * sizeof(int);
 		// Flags
@@ -75,15 +86,12 @@ namespace voxel_game::graphics
 		glVertexAttribIPointer(6, 1, GL_INT, intBufferStride, (void *)(3 * sizeof(int)));
 		glVertexAttribIPointer(7, 1, GL_INT, intBufferStride, (void *)(4 * sizeof(int)));
 
-		delete[] floatBuffer;
-		delete[] intBuffer;
-
 		m_isInit = true;
 	}
 
-	float *Mesh::createFloatBuffer()
+	std::vector<float> Mesh::createFloatBuffer()
 	{
-		float *buffer = new float[m_vertices.size() * VERTEX_FLOAT_SIZE];
+		std::vector<float> buffer(m_vertices.size() * VERTEX_FLOAT_SIZE);
 
 		for (int i = 0; i < m_vertices.size(); i++)
 		{
@@ -100,9 +108,9 @@ namespace voxel_game::graphics
 		return buffer;
 	}
 
-	int *Mesh::createIntBuffer()
+	std::vector<int> Mesh::createIntBuffer()
 	{
-		int *buffer = new int[m_vertices.size() * VERTEX_INT_SIZE];
+		std::vector<int> buffer(m_vertices.size() * VERTEX_INT_SIZE);
 
 		for (int i = 0; i < m_vertices.size(); i++)
 		{
@@ -116,9 +124,9 @@ namespace voxel_game::graphics
 		return buffer;
 	}
 
-	voxel_game::physics::Transform Mesh::getTransform()
+	physics::Transform Mesh::getTransform()
 	{
-		return *m_transform;
+		return m_transform;
 	}
 
 	std::vector<Vertex> Mesh::getVertices()

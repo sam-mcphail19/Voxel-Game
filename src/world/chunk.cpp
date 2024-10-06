@@ -25,7 +25,7 @@ namespace voxel_game::world
 				continue;
 			}
 
-			voxel_game::physics::Transform *transform = new voxel_game::physics::Transform(blockPosVec + origin, glm::mat4(1), glm::vec3(1));
+			physics::Transform transform(blockPosVec + origin, glm::mat4(1), glm::vec3(1));
 			const BlockType &blockType = BlockType::get(blockTypeId);
 			Cube cube = blockType.getMeshConstructor()(Block{blockPos + m_origin, blockTypeId}, transform);
 			std::map<g::Direction, g::Quad *> faces = *cube.getFaces();
@@ -52,13 +52,20 @@ namespace voxel_game::world
 			}
 		}
 
-		physics::Transform *transform = new physics::Transform(origin, glm::mat4(1), glm::vec3(1));
+		if (m_mesh)
+		{
+			delete m_mesh;
+			m_mesh = NULL;
+		}
+
+		// TODO:  use smart pointers for m_mesh to handle automatic memory management
+		physics::Transform transform(origin, glm::mat4(1), glm::vec3(1));
 		m_mesh = new graphics::Mesh(vertices, indices, transform, g::loadTextureAtlas());
 	}
 
-	void Chunk::putBlock(BlockPos pos, BlockTypeId type)
+	void Chunk::putBlock(Block block)
 	{
-		m_blocks[to1dIndex(pos)] = type;
+		m_blocks[to1dIndex(block.pos)] = block.type;
 	}
 
 	BlockTypeId Chunk::getBlock(int x, int y, int z)

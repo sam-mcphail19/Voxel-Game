@@ -31,8 +31,8 @@ namespace voxel_game::graphics
 
 	public:
 		using Mesh::Mesh;
-		static Quad* createQuad(physics::Transform *transform, Texture *texture);
-		static Quad* createBlockQuad(world::Block block, physics::Transform *transform, Direction direction, AtlasTexture texture);
+		static Quad* createQuad(physics::Transform transform, Texture *texture);
+		static Quad* createBlockQuad(world::Block block, physics::Transform transform, Direction direction, AtlasTexture texture);
 	};
 	
 	glm::vec3 getNormal(Direction direction);

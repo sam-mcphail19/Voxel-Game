@@ -12,13 +12,13 @@ namespace voxel_game::world
 		return &m_faces;
 	}
 
-	Cube singleTextureCube(world::Block block, voxel_game::physics::Transform *transform, g::AtlasTexture tex)
+	Cube singleTextureCube(world::Block block, physics::Transform transform, g::AtlasTexture tex)
 	{
 		return multiTextureCube(block, transform, tex, tex, tex, tex, tex, tex);
 	}
 
 	Cube multiTextureCube(
-		world::Block block, voxel_game::physics::Transform *transform,
+		world::Block block, physics::Transform transform,
 		g::AtlasTexture frontTex,
 		g::AtlasTexture backTex,
 		g::AtlasTexture leftTex,
