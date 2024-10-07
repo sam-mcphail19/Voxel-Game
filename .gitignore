@@ -1,5 +1,11 @@
 .vscode
+.vs
 
 build
+Voxel-Game
+x64
 
+Voxel-Game.vcxproj
+Voxel-Game.vcxproj.filters
+Voxel-Game.vcxproj.user
 get_sources.sh
