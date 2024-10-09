@@ -24,6 +24,7 @@ namespace voxel_game::world
 		g::Shader* m_shader;
 
 		Player m_player;
+		int m_breakBlockProgress = 0;
 
 		BlockTypeId getBlock(BlockPos blockPos);
 		void removeBlock(BlockPos blockPos);
@@ -53,9 +54,14 @@ namespace voxel_game::world
 
 		void run()
 		{
+			const auto start = std::chrono::system_clock::now();
 			log::info("Generating chunk mesh for chunk at " + m_chunk.getChunkCoord());
+
 			m_chunk.updateMesh(m_chunkManager);
-			log::info("Finished updating mesh for chunk at " + m_chunk.getChunkCoord() + ". Total vertices: " + std::to_string(m_chunk.getMesh()->getVertexCount()));
+
+			const auto end = std::chrono::system_clock::now();
+			int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			log::info("Finished updating mesh for chunk at " + m_chunk.getChunkCoord() + ". Total vertices: " + std::to_string(m_chunk.getMesh()->getVertexCount()) + ". Duration:" + std::to_string(durationMs) + "ms");
 		}
 
 	private:

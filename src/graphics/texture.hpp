@@ -14,7 +14,7 @@ namespace voxel_game::graphics
 
 	public:
 		Texture(GLuint id);
-		void bind();
+		void bind() const;
 		void unbind();
 	};
 

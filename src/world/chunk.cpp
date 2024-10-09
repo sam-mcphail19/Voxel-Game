@@ -2,18 +2,21 @@
 
 namespace voxel_game::world
 {
-	Chunk::Chunk(BlockPos chunkCoord, World *world)
+	Chunk::Chunk(BlockPos chunkCoord, World* world)
 		: m_blocks(new BlockTypeId[CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT]), m_world(world)
 	{
-		m_origin = {chunkCoord.x * CHUNK_SIZE, chunkCoord.y * CHUNK_HEIGHT, chunkCoord.z * CHUNK_SIZE};
+		m_origin = { chunkCoord.x * CHUNK_SIZE, chunkCoord.y * CHUNK_HEIGHT, chunkCoord.z * CHUNK_SIZE };
 	}
 
-	void Chunk::updateMesh(ChunkManager &chunkManager)
+	void Chunk::updateMesh(ChunkManager& chunkManager)
 	{
 		std::vector<g::Vertex> vertices;
 		std::vector<GLuint> indices;
 
 		glm::vec3 origin = toVec3(m_origin);
+
+		std::unordered_map<Face, bool> checkedFaces;
+
 		for (int i = 0; i < CHUNK_BLOCK_COUNT; i++)
 		{
 			BlockPos blockPos = to3dIndex(i);
@@ -25,25 +28,43 @@ namespace voxel_game::world
 				continue;
 			}
 
-			physics::Transform transform(blockPosVec + origin, glm::mat4(1), glm::vec3(1));
-			const BlockType &blockType = BlockType::get(blockTypeId);
-			Cube cube = blockType.getMeshConstructor()(Block{blockPos + m_origin, blockTypeId}, transform);
-			std::map<g::Direction, g::Quad *> faces = *cube.getFaces();
-
-			for (auto face = faces.begin(); face != faces.end(); face++)
+			bool anyFaceVisible = false;
+			for (int i = 0; i < 6; i++)
 			{
-				if (!isFaceVisible(blockPos, face->first, chunkManager))
+				g::Direction dir = (g::Direction)i;
+				if (isFaceVisible(blockPos, dir, chunkManager, checkedFaces))
+				{
+					anyFaceVisible = true;
+					break;
+				}
+			}
+
+			if (!anyFaceVisible)
+			{
+				continue;
+			}
+
+			const BlockType& blockType = BlockType::get(blockTypeId);
+			Cube cube = blockType.getMeshConstructor()(Block{ blockPos + m_origin, blockTypeId });
+
+			for (int i = 0; i < 6; i++)
+			{
+				g::Direction dir = (g::Direction)i;
+
+				if (!isFaceVisible(blockPos, dir, chunkManager, checkedFaces))
 				{
 					continue;
 				}
 
-				std::vector<GLuint> faceIndices = face->second->getIndices();
-				for (int j = 0; j < face->second->getVertexCount(); j++)
+				g::Quad* face = cube.getFace(dir);
+
+				std::vector<GLuint> faceIndices = face->getIndices();
+				for (int j = 0; j < face->getVertexCount(); j++)
 				{
 					indices.push_back(faceIndices[j] + vertices.size());
 				}
-				std::vector<graphics::Vertex> faceVertices = face->second->getVertices();
-				for (int j = 0; j < face->second->getVertexCount(); j++)
+				std::vector<graphics::Vertex> faceVertices = face->getVertices();
+				for (int j = 0; j < face->getVertexCount(); j++)
 				{
 					g::Vertex vert = faceVertices[j];
 					vert.m_position += blockPosVec;
@@ -58,9 +79,8 @@ namespace voxel_game::world
 			m_mesh = NULL;
 		}
 
-		// TODO:  use smart pointers for m_mesh to handle automatic memory management
-		physics::Transform transform(origin, glm::mat4(1), glm::vec3(1));
-		m_mesh = new graphics::Mesh(vertices, indices, transform, g::loadTextureAtlas());
+		// TODO: use smart pointers for m_mesh to handle automatic memory management
+		m_mesh = new graphics::Mesh(vertices, indices, NULL, g::loadTextureAtlas());
 	}
 
 	void Chunk::putBlock(Block block)
@@ -78,17 +98,17 @@ namespace voxel_game::world
 		return getBlock(blockPos.x, blockPos.y, blockPos.z);
 	}
 
-	BlockPos Chunk::getOrigin()
+	BlockPos Chunk::getOrigin() const
 	{
 		return m_origin;
 	}
 
 	BlockPos Chunk::getChunkCoord()
 	{
-		return {m_origin.x / CHUNK_SIZE, m_origin.y / CHUNK_HEIGHT, m_origin.z / CHUNK_SIZE};
+		return { m_origin.x / CHUNK_SIZE, m_origin.y / CHUNK_HEIGHT, m_origin.z / CHUNK_SIZE };
 	}
 
-	graphics::Mesh *Chunk::getMesh()
+	graphics::Mesh* Chunk::getMesh()
 	{
 		return m_mesh;
 	}
@@ -110,7 +130,7 @@ namespace voxel_game::world
 		int y = i / CHUNK_SIZE;
 		int x = i % CHUNK_SIZE;
 
-		return {x, y, z};
+		return { x, y, z };
 	}
 
 	glm::vec3 toVec3(BlockPos blockPos)
@@ -118,15 +138,21 @@ namespace voxel_game::world
 		return glm::vec3(blockPos.x, blockPos.y, blockPos.z);
 	}
 
-	bool Chunk::isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager &chunkManager)
+	bool Chunk::isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager& chunkManager, std::unordered_map<Face, bool> checkedFaces)
 	{
+		Face face{ pos, direction };
+		if (checkedFaces.find(face) != checkedFaces.end())
+		{
+			return checkedFaces[face];
+		}
+
 		BlockPos neighbourPos = pos + toBlockPos(getNormal(direction));
 		bool neighbourInThisChunk = neighbourPos.x >= 0 &&
-									neighbourPos.x < CHUNK_SIZE &&
-									neighbourPos.z >= 0 &&
-									neighbourPos.z < CHUNK_SIZE &&
-									neighbourPos.y >= 0 &&
-									neighbourPos.y < CHUNK_HEIGHT;
+			neighbourPos.x < CHUNK_SIZE &&
+			neighbourPos.z >= 0 &&
+			neighbourPos.z < CHUNK_SIZE &&
+			neighbourPos.y >= 0 &&
+			neighbourPos.y < CHUNK_HEIGHT;
 
 		if (neighbourInThisChunk)
 		{
@@ -134,7 +160,7 @@ namespace voxel_game::world
 			return neighbour == BlockTypeId::NONE || neighbour == BlockTypeId::AIR;
 		}
 
-		Chunk *neighbourChunk = getNeighbourChunk(direction, chunkManager);
+		Chunk* neighbourChunk = getNeighbourChunk(direction, chunkManager);
 
 		if (neighbourChunk == NULL)
 		{
@@ -150,7 +176,7 @@ namespace voxel_game::world
 		return neighbour == BlockTypeId::NONE || neighbour == BlockTypeId::AIR;
 	}
 
-	Chunk *Chunk::getNeighbourChunk(graphics::Direction direction, ChunkManager &chunkManager)
+	Chunk* Chunk::getNeighbourChunk(graphics::Direction direction, ChunkManager& chunkManager)
 	{
 		BlockPos chunkCoord = getChunkCoord() + toBlockPos(getNormal(direction));
 		return chunkManager.getChunk(chunkCoord);

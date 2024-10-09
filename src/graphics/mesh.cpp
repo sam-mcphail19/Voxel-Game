@@ -2,12 +2,12 @@
 
 namespace voxel_game::graphics
 {
-	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, physics::Transform transform, Texture *texture)
+	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, physics::Transform* transform, Texture* texture)
 		: m_vertices(vertices),
-		  m_indices(indices),
-		  m_transform(transform),
-		  m_texture(texture),
-		  m_isInit(false) {}
+		m_indices(indices),
+		m_transform(transform),
+		m_texture(texture),
+		m_isInit(false) {}
 
 	Mesh::~Mesh()
 	{
@@ -68,9 +68,9 @@ namespace voxel_game::graphics
 		// Position (x,y,z)
 		glVertexAttribPointer(0, POS_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, 0);
 		// Normal (x,y,z)
-		glVertexAttribPointer(1, NORMAL_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void *)(POS_SIZE * sizeof(float)));
+		glVertexAttribPointer(1, NORMAL_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void*)(POS_SIZE * sizeof(float)));
 		// UVs (u,v)
-		glVertexAttribPointer(2, UV_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void *)((POS_SIZE + NORMAL_SIZE) * sizeof(float)));
+		glVertexAttribPointer(2, UV_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void*)((POS_SIZE + NORMAL_SIZE) * sizeof(float)));
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_iVbo);
 		std::vector<int> intBuffer = createIntBuffer();
@@ -80,11 +80,11 @@ namespace voxel_game::graphics
 		// Flags
 		glVertexAttribIPointer(3, 1, GL_INT, intBufferStride, 0);
 		// BlockType
-		glVertexAttribIPointer(4, 1, GL_INT, intBufferStride, (void *)(1 * sizeof(int)));
+		glVertexAttribIPointer(4, 1, GL_INT, intBufferStride, (void*)(1 * sizeof(int)));
 		// Block (x,y,z)
-		glVertexAttribIPointer(5, 1, GL_INT, intBufferStride, (void *)(2 * sizeof(int)));
-		glVertexAttribIPointer(6, 1, GL_INT, intBufferStride, (void *)(3 * sizeof(int)));
-		glVertexAttribIPointer(7, 1, GL_INT, intBufferStride, (void *)(4 * sizeof(int)));
+		glVertexAttribIPointer(5, 1, GL_INT, intBufferStride, (void*)(2 * sizeof(int)));
+		glVertexAttribIPointer(6, 1, GL_INT, intBufferStride, (void*)(3 * sizeof(int)));
+		glVertexAttribIPointer(7, 1, GL_INT, intBufferStride, (void*)(4 * sizeof(int)));
 
 		m_isInit = true;
 	}
@@ -119,12 +119,13 @@ namespace voxel_game::graphics
 			buffer[i * VERTEX_INT_SIZE + 2] = m_vertices[i].m_blockPos.x;
 			buffer[i * VERTEX_INT_SIZE + 3] = m_vertices[i].m_blockPos.y;
 			buffer[i * VERTEX_INT_SIZE + 4] = m_vertices[i].m_blockPos.z;
+			//log::info(m_vertices[i]);
 		}
 
 		return buffer;
 	}
 
-	physics::Transform Mesh::getTransform()
+	physics::Transform* Mesh::getTransform()
 	{
 		return m_transform;
 	}

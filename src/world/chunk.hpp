@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mutex>
+#include <unordered_map>
 #include <glm/vec3.hpp>
 #include "block.hpp"
 #include "chunkManager.hpp"
@@ -12,6 +12,11 @@ namespace voxel_game::world
 {
 	class World;
 
+	struct Face {
+		BlockPos pos;
+		g::Direction dir;
+	};
+
 	class Chunk
 	{
 	private:
@@ -20,7 +25,7 @@ namespace voxel_game::world
 		BlockTypeId *m_blocks;
 		graphics::Mesh *m_mesh = NULL;
 
-		bool isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager &chunkManager);
+		bool isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager &chunkManager, std::unordered_map<Face, bool> checkedFaces);
 		Chunk *getNeighbourChunk(graphics::Direction direction, ChunkManager &chunkManager);
 
 	public:
@@ -29,7 +34,7 @@ namespace voxel_game::world
 		void putBlock(Block block);
 		BlockTypeId getBlock(int x, int y, int z);
 		BlockTypeId getBlock(BlockPos blockPos);
-		BlockPos getOrigin();
+		BlockPos getOrigin() const;
 		BlockPos getChunkCoord();
 		graphics::Mesh *getMesh();
 	};
@@ -38,4 +43,29 @@ namespace voxel_game::world
 	int to1dIndex(BlockPos pos);
 	BlockPos to3dIndex(int i);
 	glm::vec3 toVec3(BlockPos blockPos);
+}
+
+namespace std {
+	template<>
+	struct hash<voxel_game::world::Face> {
+		size_t operator()(const voxel_game::world::Face& face) const {
+			unsigned int hash = (int) face.dir;
+			hash *= 37;
+			hash += face.pos.x;
+			hash *= 37;
+			hash += face.pos.y;
+			hash *= 37;
+			hash += face.pos.z;
+			return hash;
+		}
+	};
+}
+
+namespace std {
+	template<>
+	struct equal_to<voxel_game::world::Face> {
+		bool operator()(const voxel_game::world::Face& face1, const voxel_game::world::Face& face2) const {
+			return face1.dir == face2.dir && face1.pos == face2.pos;
+		}
+	};
 }

@@ -21,9 +21,9 @@ namespace voxel_game::graphics
 		BOTTOM,
 	};
 
-	const int vertexCount = 6;
+	static const int vertexCount = 6;
 
-	class Quad: public Mesh
+	class Quad : public Mesh
 	{
 	private:
 		static std::vector<Vertex>* createVertices();
@@ -31,9 +31,9 @@ namespace voxel_game::graphics
 
 	public:
 		using Mesh::Mesh;
-		static Quad* createQuad(physics::Transform transform, Texture *texture);
-		static Quad* createBlockQuad(world::Block block, physics::Transform transform, Direction direction, AtlasTexture texture);
+		static Quad* createQuad(physics::Transform* transform, Texture* texture);
+		static Quad* createBlockQuad(world::Block block, Direction direction, AtlasTexture texture);
 	};
-	
+
 	glm::vec3 getNormal(Direction direction);
 }

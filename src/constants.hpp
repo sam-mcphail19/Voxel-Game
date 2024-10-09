@@ -1,7 +1,15 @@
 #pragma once
 
+#define MAX_KEYS 1024
+#define MAX_BUTTONS 32
+
+#define TEXTURE_ATLAS_PATH "res/textureAtlas.png"
+#define ATLAS_TEXTURE_SIZE 16
+// 16 * 16
+#define ATLAS_PIXELS_PER_TEXTURE 256
+
 #define WORLD_HEIGHT 128
-#define GRAVITY 0.01
+constexpr float GRAVITY = 0.01f;
 #define CHUNK_RENDER_DISTANCE 4
 #define CHUNK_SIZE 16
 #define CHUNK_HEIGHT 128
@@ -18,3 +26,4 @@
 #define CURR_TIME_UNIFORM "u_currTime" 
 #define IS_SELECTED_BLOCK_UNIFORM "u_isSelectedBlock"
 #define SELECTED_BLOCK_UNIFORM "u_selectedBlock"
+#define BLOCK_BREAK_PROG_UNIFORM "u_blockBreakProgress"

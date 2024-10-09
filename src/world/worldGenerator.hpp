@@ -10,6 +10,7 @@ namespace voxel_game::world
 	class WorldGenerator
 	{
 	private:
+		long m_seed;
 		NoiseGenerator m_noiseGenerator;
 		std::unordered_map<int, int> m_heightMap;
 
@@ -18,7 +19,7 @@ namespace voxel_game::world
 		int getHeightMapHash(int x, int z);
 
 	public:
-		WorldGenerator(NoiseGenerator &noiseGenerator);
+		WorldGenerator(long seed);
 		void generateChunkData(Chunk &chunk);
 	};
 }

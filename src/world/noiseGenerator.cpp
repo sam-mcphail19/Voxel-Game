@@ -2,7 +2,7 @@
 
 namespace voxel_game::world
 {
-    NoiseGenerator::NoiseGenerator(long seed) : m_simplex(OpenSimplex2S(seed)) {}
+    NoiseGenerator::NoiseGenerator(long seed) : m_simplex(new OpenSimplex2S(seed)) {}
 
     float NoiseGenerator::noise2(int x, int y, float scale, float lacunarity, float persistance, int octaves)
     {
@@ -13,7 +13,7 @@ namespace voxel_game::world
             float frequency = pow(lacunarity, i);
             float amplitude = pow(persistance, octaves - i);
 
-            float noise = m_simplex.noise2(
+            float noise = m_simplex->noise2(
                 x * scale / frequency,
                 y * scale / frequency);
 

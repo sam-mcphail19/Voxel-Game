@@ -16,17 +16,10 @@ namespace voxel_game::graphics
 {
 	class Renderer
 	{
-	private:
-		std::vector<Mesh *> m_perspMeshes;
-		std::vector<Mesh *> m_orthoMeshes;
-		std::chrono::time_point<std::chrono::system_clock> m_lastVertCountUpdateTime;
-		void clear();
-
 	public:
 		Renderer();
-		void render(Shader *shader, Camera *camera, Window *window);
-		void submitPerspMesh(Mesh *mesh);
-		void submitOrthoMesh(Mesh *mesh);
-		void clearMeshes();
+		void renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera, Window *window);
+		void renderOrtho(std::vector<Mesh*> meshes, Shader *shader, Camera *camera, Window *window);
+		void clear();
 	};
 }

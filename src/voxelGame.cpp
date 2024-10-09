@@ -9,21 +9,19 @@ namespace voxel_game
 		m_window.setBackground(0.2, 0.2, 0.4);
 
 		g::createTextureAtlas();
-		g::loadTextureAtlas();
 
 		m_player = new Player(glm::vec3(0, 45, 0));
 
-		physics::Transform crosshairTransform(
+		physics::Transform* crosshairTransform = new physics::Transform(
 			glm::vec3(-0.5, -0.5, 0),
 			glm::mat4(1),
-			glm::vec3(9.f/16, 1, 1) * glm::vec3(0.05)
+			glm::vec3(9.f / 16, 1, 1) * glm::vec3(0.05)
 		);
 
 		m_crosshair = g::Quad::createQuad(crosshairTransform, g::loadTexture("res/texture/crosshair.png"));
 
-		world::NoiseGenerator noiseGenerator(0L);
-		world::WorldGenerator generator(noiseGenerator);
-		m_world = new world::World(generator, &m_shader, *m_player);
+		world::WorldGenerator generator(0L);
+		m_world = new world::World(generator, &m_chunkShader, *m_player);
 		m_world->generate();
 	}
 
@@ -32,10 +30,11 @@ namespace voxel_game
 		const auto startTime = std::chrono::steady_clock::now();
 		const auto msSinceLastTick = std::chrono::duration_cast<std::chrono::milliseconds>(startTime - m_lastTickTime).count();
 
-		m_shader.bind();
+		// world.update() sets shader uniforms
+		m_chunkShader.bind();
 
 		// TODO: need to also handle cases where game is running too slow
-        // can run multiple ticks or start skipping ticks
+		// can run multiple ticks or start skipping ticks
 		if (msSinceLastTick > MS_BETWEEN_TICKS)
 		{
 			m_lastTickTime = startTime;
@@ -45,20 +44,7 @@ namespace voxel_game
 			m_ticks++;
 		}
 
-		m_window.update();
-
-		m_renderer.submitOrthoMesh(m_crosshair);
-
-		for (world::Chunk* chunk : m_world->getVisibleChunks())
-		{
-			m_renderer.submitPerspMesh(chunk->getMesh());
-		}
-
-		m_renderer.render(&m_shader, m_player->getCamera(), &m_window);
-
-		m_renderer.clearMeshes();
-
-		m_shader.unbind();
+		draw();
 
 		const auto endTime = std::chrono::steady_clock::now();
 
@@ -71,6 +57,7 @@ namespace voxel_game
 			m_ticks = 0;
 		}
 
+		// TODO: Update to show average FPS over the last second, instead of for this frame only
 		const auto durationNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
 		const auto fps = 1000000000.f / durationNs;
 		m_minFps = std::min((float)m_minFps, fps);
@@ -86,6 +73,27 @@ namespace voxel_game
 	void VoxelGame::updateGame()
 	{
 		m_world->update();
+	}
+
+	void VoxelGame::draw()
+	{
+		m_window.update();
+		m_renderer.clear();
+
+		std::vector<world::Chunk*> visibleChunks = m_world->getVisibleChunks();
+		std::vector<g::Mesh*> perspMeshes;
+		perspMeshes.reserve(visibleChunks.size());
+
+		for (world::Chunk* chunk : visibleChunks)
+		{
+			perspMeshes.push_back(chunk->getMesh());
+		}
+
+		m_renderer.renderPersp(perspMeshes, &m_chunkShader, m_player->getCamera(), &m_window);
+
+		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair };
+
+		m_renderer.renderOrtho(orthoMeshes, &m_uiShader, m_player->getCamera(), &m_window);
 	}
 
 	bool VoxelGame::shouldClose()

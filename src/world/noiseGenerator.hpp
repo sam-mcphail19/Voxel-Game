@@ -8,7 +8,7 @@ namespace voxel_game::world
 	class NoiseGenerator
 	{
 	private:
-		OpenSimplex2S m_simplex;
+		OpenSimplex2S* m_simplex;
 
 	public:
 		NoiseGenerator(long seed);

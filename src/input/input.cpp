@@ -34,7 +34,7 @@ namespace voxel_game::input
 		refreshKeyStates();
 	}
 
-	void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+	void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
 		switch (action)
 		{
@@ -52,7 +52,7 @@ namespace voxel_game::input
 		}
 	}
 
-	void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
+	void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	{
 		switch (action)
 		{
@@ -70,7 +70,7 @@ namespace voxel_game::input
 		}
 	}
 
-	void cursor_pos_callback(GLFWwindow *window, double xPos, double yPos)
+	void cursor_pos_callback(GLFWwindow* window, double xPos, double yPos)
 	{
 		mouseX = xPos;
 		mouseY = yPos;
@@ -91,7 +91,7 @@ namespace voxel_game::input
 		return buttons[button] == KeyState::PRESSED || buttons[button] == KeyState::DOWN;
 	}
 
-	void getMousePos(double &x, double &y)
+	void getMousePos(double& x, double& y)
 	{
 		x = mouseX;
 		y = mouseY;

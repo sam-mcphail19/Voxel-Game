@@ -72,7 +72,7 @@ namespace voxel_game
 
 		m_camera->setPos(m_pos);
 
-		return {pitch, yaw, movement, mouseOneDown, mouseTwoDown};
+		return { pitch, yaw, movement, mouseOneDown, mouseTwoDown };
 	}
 
 	bool Player::isAffectedByGravity()
@@ -81,19 +81,19 @@ namespace voxel_game
 	}
 
 	// TODO: Frustum culling
-	bool Player::chunkIsVisible(world::Chunk *chunk)
+	bool Player::chunkIsVisible(world::Chunk* chunk)
 	{
 		world::BlockPos chunkOrigin = chunk->getOrigin();
 		int chunkCenterX = chunkOrigin.x + CHUNK_SIZE / 2;
-        int chunkCenterZ = chunkOrigin.z + CHUNK_SIZE / 2;
+		int chunkCenterZ = chunkOrigin.z + CHUNK_SIZE / 2;
 
 		if (std::abs(chunkCenterX - m_pos.x) > CHUNK_RENDER_DISTANCE_IN_BLOCKS ||
-                std::abs(chunkCenterZ - m_pos.z) > CHUNK_RENDER_DISTANCE_IN_BLOCKS) {
-                return false;
-            }
-            int x = m_pos.x - chunkCenterX;
-            int z = m_pos.z - chunkCenterZ;
-            return std::sqrt(x * x + z * z) < CHUNK_RENDER_DISTANCE_IN_BLOCKS;
+			std::abs(chunkCenterZ - m_pos.z) > CHUNK_RENDER_DISTANCE_IN_BLOCKS) {
+			return false;
+		}
+		int x = m_pos.x - chunkCenterX;
+		int z = m_pos.z - chunkCenterZ;
+		return std::sqrt(x * x + z * z) < CHUNK_RENDER_DISTANCE_IN_BLOCKS;
 	}
 
 	glm::vec3 Player::getPos()
@@ -101,7 +101,7 @@ namespace voxel_game
 		return m_pos;
 	}
 
-	graphics::Camera *Player::getCamera()
+	graphics::Camera* Player::getCamera()
 	{
 		return m_camera;
 	}

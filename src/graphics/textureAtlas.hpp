@@ -13,16 +13,13 @@
 #include "../util/fileUtils.hpp"
 #include "../util/log.hpp"
 #include "../vendor/lodepng.h"
-
-#define TEXTURE_ATLAS_PATH "res/textureAtlas.png"
-#define ATLAS_TEXTURE_SIZE 16
-// 16 * 16
-#define ATLAS_PIXELS_PER_TEXTURE 256
+#include "../constants.hpp"
 
 namespace voxel_game::graphics
 {
 	void createTextureAtlas();
 	int getTextureAtlasSize();
+	float getTextureAtlasTextureSize();
 	Texture* loadTextureAtlas();
 	glm::vec2 getTextureAtlasCoords(AtlasTexture texture);
 }

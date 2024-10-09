@@ -4,6 +4,7 @@
 #include <format>
 #include <string>
 #include <glm/vec3.hpp>
+#include "graphics/mesh.hpp"
 #include "graphics/quad.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/textureAtlas.hpp"
@@ -25,7 +26,8 @@ namespace voxel_game
 
 		graphics::Renderer m_renderer = graphics::Renderer();
 		graphics::Window m_window = graphics::Window("Voxel Game", 1280, 720);
-		graphics::Shader m_shader = graphics::Shader("textured.vs", "textured.fs");
+		graphics::Shader m_chunkShader = graphics::Shader("chunk.vs", "chunk.fs");
+		graphics::Shader m_uiShader = graphics::Shader("ui.vs", "ui.fs");
 
 		std::chrono::time_point<std::chrono::steady_clock> m_lastFpsUpdateTime;
 		std::chrono::time_point<std::chrono::steady_clock> m_lastTickTime;
@@ -44,5 +46,6 @@ namespace voxel_game
 
 	private:
 		void updateGame();
+		void draw();
 	};
 }

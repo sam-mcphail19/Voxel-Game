@@ -2,7 +2,7 @@
 
 namespace voxel_game::graphics
 {
-	int vertexPositions[] = {
+	static int vertexPositions[] = {
         // Front Face
         0, 1, 1,
         0, 0, 1,
@@ -40,9 +40,9 @@ namespace voxel_game::graphics
         0, 0, 0,
     };
 
-    std::vector<GLuint> indices ({0, 1, 3, 3, 1, 2});
+    static std::vector<GLuint> indices ({0, 1, 3, 3, 1, 2});
 
-    int uvs[] = {
+    static int uvs[] = {
         // Front Face
         0, 1,
         0, 0,
@@ -80,7 +80,7 @@ namespace voxel_game::graphics
         1, 0,  
     };
 
-	std::map<Direction, glm::vec3> normalMap = {
+	static std::map<Direction, glm::vec3> normalMap = {
 		{Direction::FRONT, glm::vec3(0, 0, 1)},
 		{Direction::BACK, glm::vec3(0, 0, -1)},
 		{Direction::RIGHT, glm::vec3(1, 0, 0)},
@@ -89,7 +89,7 @@ namespace voxel_game::graphics
 		{Direction::BOTTOM, glm::vec3(0, -1, 0)},
 	};
 
-	std::map<Direction, int> vertexPositionIndexMap = {
+	static std::map<Direction, int> vertexPositionIndexMap = {
 		{Direction::FRONT, 0},
 		{Direction::BACK, 12},
 		{Direction::RIGHT, 24},
@@ -98,7 +98,7 @@ namespace voxel_game::graphics
 		{Direction::BOTTOM, 60},
 	};
 
-	std::map<Direction, int> uvIndexMap = {
+	static std::map<Direction, int> uvIndexMap = {
 		{Direction::FRONT, 0},
 		{Direction::BACK, 8},
 		{Direction::RIGHT, 16},
@@ -107,14 +107,14 @@ namespace voxel_game::graphics
 		{Direction::BOTTOM, 40},
 	};
 
-	Quad *Quad::createQuad(physics::Transform transform, Texture *texture)
+	Quad *Quad::createQuad(physics::Transform* transform, Texture *texture)
 	{
 		return new Quad(*createVertices(), indices, transform, texture);
 	}
 
-	Quad *Quad::createBlockQuad(world::Block block, physics::Transform transform, Direction direction, AtlasTexture texture)
+	Quad *Quad::createBlockQuad(world::Block block, Direction direction, AtlasTexture texture)
 	{
-		return new Quad(*createBlockQuadVertices(block, direction, texture), indices, transform, loadTextureAtlas());
+		return new Quad(*createBlockQuadVertices(block, direction, texture), indices, NULL, loadTextureAtlas());
 	}
 
 	glm::vec3 getNormal(Direction direction)
@@ -122,10 +122,10 @@ namespace voxel_game::graphics
 		return normalMap[direction];
 	}
 
-	// TODO: this probably shouldnt be a vector
 	std::vector<Vertex>* Quad::createVertices()
 	{
 		std::vector<Vertex>* vertices = new std::vector<Vertex>;
+		vertices->reserve(vertexCount);
 
 		int startingIndex = vertexPositionIndexMap[Direction::FRONT];
 		int uvIndex = uvIndexMap[Direction::FRONT];
@@ -144,13 +144,15 @@ namespace voxel_game::graphics
 		return vertices;
 	}
 
-	// TODO: this probably shouldnt be a vector
 	std::vector<Vertex>* Quad::createBlockQuadVertices(world::Block block, Direction direction, AtlasTexture texture)
 	{
 		std::vector<Vertex>* vertices = new std::vector<Vertex>;
+		vertices->reserve(vertexCount);
 
 		int startingIndex = vertexPositionIndexMap[direction];
 		int uvIndex = uvIndexMap[direction];
+		glm::vec2 atlasCoords = getTextureAtlasCoords(texture);
+		float textureSize = getTextureAtlasTextureSize();
 
 		for (int i = 0; i < vertexCount; i++)
 		{
@@ -159,8 +161,6 @@ namespace voxel_game::graphics
 				vertexPositions[startingIndex + i * 3 + 1],
 				vertexPositions[startingIndex + i * 3 + 2]
 			);
-			glm::vec2 atlasCoords = getTextureAtlasCoords(texture);
-			float textureSize = (float)ATLAS_TEXTURE_SIZE / getTextureAtlasSize();
 			glm::vec2 uv = glm::vec2(
 				uvs[uvIndex + i * 2] * textureSize + atlasCoords.x,
 				uvs[uvIndex + i * 2 + 1] * textureSize + atlasCoords.y

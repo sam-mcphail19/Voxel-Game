@@ -23,7 +23,7 @@ namespace voxel_game
 	{
 	private:
 		glm::vec3 m_pos;
-		graphics::Camera *m_camera;
+		graphics::Camera* m_camera;
 		// collider
 		float m_pitch = 0;
 		float m_yaw = 180;
@@ -42,11 +42,11 @@ namespace voxel_game
 		PlayerControl getInput();
 		bool isAffectedByGravity();
 		bool isAffectedByCollision();
-		bool chunkIsVisible(world::Chunk *chunk);
+		bool chunkIsVisible(world::Chunk* chunk);
 
 		glm::vec3 getPos();
 		glm::vec3 getVelocity();
-		graphics::Camera *getCamera();
+		graphics::Camera* getCamera();
 
 		void setPos(glm::vec3 pos);
 		void setVelocity(glm::vec3 vel);

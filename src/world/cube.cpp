@@ -2,23 +2,30 @@
 
 namespace voxel_game::world
 {
-	Cube::Cube(std::map<g::Direction, g::Quad *> faces)
+	Cube::Cube(std::vector<g::Quad*> faces)
 	{
 		m_faces = faces;
 	}
 
-	std::map<g::Direction, g::Quad *> *Cube::getFaces()
+	Cube::~Cube()
 	{
-		return &m_faces;
+		for (int i = 0; i < 6; i++) {
+			delete m_faces[i];
+		}
 	}
 
-	Cube singleTextureCube(world::Block block, physics::Transform transform, g::AtlasTexture tex)
+	g::Quad* Cube::getFace(g::Direction direction)
 	{
-		return multiTextureCube(block, transform, tex, tex, tex, tex, tex, tex);
+		return m_faces[(int) direction];
+	}
+
+	Cube singleTextureCube(world::Block block, g::AtlasTexture tex)
+	{
+		return multiTextureCube(block, tex, tex, tex, tex, tex, tex);
 	}
 
 	Cube multiTextureCube(
-		world::Block block, physics::Transform transform,
+		world::Block block,
 		g::AtlasTexture frontTex,
 		g::AtlasTexture backTex,
 		g::AtlasTexture leftTex,
@@ -26,13 +33,15 @@ namespace voxel_game::world
 		g::AtlasTexture topTex,
 		g::AtlasTexture bottomTex)
 	{
-		std::map<g::Direction, g::Quad *> faces = {
-			{g::Direction::FRONT, g::Quad::createBlockQuad(block, transform, g::Direction::FRONT, frontTex)},
-			{g::Direction::BACK, g::Quad::createBlockQuad(block, transform, g::Direction::BACK, backTex)},
-			{g::Direction::LEFT, g::Quad::createBlockQuad(block, transform, g::Direction::LEFT, leftTex)},
-			{g::Direction::RIGHT, g::Quad::createBlockQuad(block, transform, g::Direction::RIGHT, rightTex)},
-			{g::Direction::TOP, g::Quad::createBlockQuad(block, transform, g::Direction::TOP, topTex)},
-			{g::Direction::BOTTOM, g::Quad::createBlockQuad(block, transform, g::Direction::BOTTOM, bottomTex)}};
+		std::vector<g::Quad*> faces = {
+			g::Quad::createBlockQuad(block, g::Direction::FRONT, frontTex),
+			g::Quad::createBlockQuad(block, g::Direction::BACK, backTex),
+			g::Quad::createBlockQuad(block, g::Direction::RIGHT, rightTex),
+			g::Quad::createBlockQuad(block, g::Direction::LEFT, leftTex),
+			g::Quad::createBlockQuad(block, g::Direction::TOP, topTex),
+			g::Quad::createBlockQuad(block, g::Direction::BOTTOM, bottomTex)
+		};
+
 		return Cube(faces);
 	}
 }

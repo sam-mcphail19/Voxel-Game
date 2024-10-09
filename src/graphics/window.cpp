@@ -2,6 +2,7 @@
 
 namespace voxel_game::graphics
 {
+	// TODO: Change these to use the logger
 	void errorCallback(int error, const char *description)
 	{
 		std::cerr << "GLFW error " << error << ": " << description << std::endl;
@@ -25,7 +26,7 @@ namespace voxel_game::graphics
 		}
 
 		glfwSetErrorCallback(errorCallback);
-		// glEnable(GL_DEBUG_OUTPUT);
+		//glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageCallback(debugCallback, nullptr);
 
 		centerCursor();

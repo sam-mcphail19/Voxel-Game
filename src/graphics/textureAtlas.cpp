@@ -58,11 +58,18 @@ namespace voxel_game::graphics
 		{
 			std::cout << "Error " << error << ": " << lodepng_error_text(error) << std::endl;
 		}
+
+		loadTextureAtlas();
 	}
 
 	int getTextureAtlasSize()
 	{
 		return ATLAS_TEXTURE_SIZE * texturesPerRow;
+	}
+
+	float getTextureAtlasTextureSize()
+	{
+		return (float)ATLAS_TEXTURE_SIZE / getTextureAtlasSize();
 	}
 
 	glm::vec2 getTextureAtlasCoords(AtlasTexture texture)

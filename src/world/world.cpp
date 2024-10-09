@@ -29,7 +29,7 @@ namespace voxel_game::world
 				BlockPos pos = currentChunkCoord + BlockPos{x, -currentChunkCoord.y, z};
 				if (!m_chunkManager.containsChunk(pos))
 				{
-					// generateChunk(pos);
+					generateChunk(pos);
 				}
 			}
 		}
@@ -42,7 +42,27 @@ namespace voxel_game::world
 
 			if (input.mouseOneDown)
 			{
-				removeBlock(blockLookingAt.pos);
+				m_breakBlockProgress++;
+
+				if (m_breakBlockProgress == 30)
+				{
+					removeBlock(blockLookingAt.pos);
+					m_breakBlockProgress = 0;
+				}
+				
+				float breakBlockProg = (float)m_breakBlockProgress / 30;
+				log::info("Progess: " + std::to_string(breakBlockProg));
+				m_shader->setUniform1f(BLOCK_BREAK_PROG_UNIFORM, breakBlockProg);
+
+			}
+			else 
+			{
+				if (m_breakBlockProgress > 0)
+				{
+					m_shader->setUniform1f(BLOCK_BREAK_PROG_UNIFORM, 0);
+				}
+
+				m_breakBlockProgress = 0;
 			}
 
 			if (input.mouseTwoDown)

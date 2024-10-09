@@ -25,7 +25,7 @@ namespace voxel_game::utils
 	int floorDiv(int a, int b)
 	{
 		int result = a / b;
-		// If x and y have opposite signs and there's a remainder, subtract 1 from the result
+		// If a and b have opposite signs and there's a remainder, subtract 1 from the result
 		if ((a % b != 0) && ((a < 0) != (b < 0))) {
 			result--;
 		}

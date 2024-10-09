@@ -22,8 +22,13 @@ namespace voxel_game::physics {
 		return glm::translate(mat, m_translation);
 	}
 
-	void Transform::setTranslation(glm::vec3 translation)
+	std::string Transform::toString()
 	{
-		m_translation = translation;
+		std::stringstream stream;
+		stream << "Transform(Translation: " << glm::to_string(m_translation)
+			<< ", Scale: " << glm::to_string(m_scale)
+			<< ", Rotation: " << glm::to_string(m_rotation)
+			<< ")";
+		return stream.str();
 	}
 }

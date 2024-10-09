@@ -2,7 +2,7 @@
 
 namespace voxel_game::world
 {
-    WorldGenerator::WorldGenerator(NoiseGenerator &noiseGenerator) : m_noiseGenerator(noiseGenerator) {}
+    WorldGenerator::WorldGenerator(long seed) : m_noiseGenerator(NoiseGenerator(seed)) {}
 
     void WorldGenerator::generateChunkData(Chunk &chunk)
     {
