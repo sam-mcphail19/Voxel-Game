@@ -119,7 +119,6 @@ namespace voxel_game::graphics
 			buffer[i * VERTEX_INT_SIZE + 2] = m_vertices[i].m_blockPos.x;
 			buffer[i * VERTEX_INT_SIZE + 3] = m_vertices[i].m_blockPos.y;
 			buffer[i * VERTEX_INT_SIZE + 4] = m_vertices[i].m_blockPos.z;
-			//log::info(m_vertices[i]);
 		}
 
 		return buffer;

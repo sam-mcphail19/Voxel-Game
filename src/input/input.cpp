@@ -6,6 +6,12 @@ namespace voxel_game::input
 	KeyState buttons[MAX_BUTTONS];
 	double mouseX, mouseY;
 
+	void update()
+	{
+		refreshButtonStates();
+		refreshKeyStates();
+	}
+
 	void refreshKeyStates()
 	{
 		for (int i = 0; i < MAX_KEYS; i++)
@@ -26,12 +32,6 @@ namespace voxel_game::input
 				buttons[i] = KeyState::NONE;
 			}
 		}
-	}
-
-	void update()
-	{
-		refreshButtonStates();
-		refreshKeyStates();
 	}
 
 	void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)

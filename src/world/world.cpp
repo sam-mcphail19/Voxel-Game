@@ -2,15 +2,23 @@
 
 namespace voxel_game::world
 {
-	World::World(WorldGenerator &worldGenerator, g::Shader *shader, Player &player)
-		: m_worldGenerator(worldGenerator), m_shader(shader), m_player(player), m_chunkManager(ChunkManager()) {}
+	World::World(WorldGenerator& worldGenerator, g::Shader* shader, Player& player)
+		: m_chunkManager(ChunkManager()), m_worldGenerator(worldGenerator), m_threadPool(utils::ThreadPool()), m_shader(shader), m_player(player)
+	{
+		m_threadPool.start();
+	}
+
+	World::~World()
+	{
+		m_threadPool.stop();
+	}
 
 	void World::generate()
 	{
 		for (int y = 0; y < WORLD_HEIGHT / CHUNK_HEIGHT; y++)
 		{
-			generateChunk({0, y, 0});
-			generateChunk({1, y, 0});
+			generateChunk({ 0, y, 0 });
+			generateChunk({ 1, y, 0 });
 		}
 	}
 
@@ -26,10 +34,11 @@ namespace voxel_game::world
 		{
 			for (int z = -CHUNK_RENDER_DISTANCE; z < CHUNK_RENDER_DISTANCE; z++)
 			{
-				BlockPos pos = currentChunkCoord + BlockPos{x, -currentChunkCoord.y, z};
+				BlockPos pos = currentChunkCoord + BlockPos{ x, -currentChunkCoord.y, z };
 				if (!m_chunkManager.containsChunk(pos))
 				{
-					generateChunk(pos);
+					// TODO: Sort this by closest to player -> furthest to player
+					//generateChunk(pos);
 				}
 			}
 		}
@@ -42,20 +51,24 @@ namespace voxel_game::world
 
 			if (input.mouseOneDown)
 			{
+				if (m_blockBeingBroken != blockLookingAt.pos)
+				{
+					m_breakBlockProgress = 0;
+					m_blockBeingBroken = blockLookingAt.pos;
+				}
+
 				m_breakBlockProgress++;
 
-				if (m_breakBlockProgress == 30)
+				if (m_breakBlockProgress >= 30)
 				{
 					removeBlock(blockLookingAt.pos);
 					m_breakBlockProgress = 0;
 				}
-				
-				float breakBlockProg = (float)m_breakBlockProgress / 30;
-				log::info("Progess: " + std::to_string(breakBlockProg));
-				m_shader->setUniform1f(BLOCK_BREAK_PROG_UNIFORM, breakBlockProg);
 
+				float breakBlockProg = (float)m_breakBlockProgress / 30;
+				m_shader->setUniform1f(BLOCK_BREAK_PROG_UNIFORM, breakBlockProg);
 			}
-			else 
+			else
 			{
 				if (m_breakBlockProgress > 0)
 				{
@@ -84,10 +97,10 @@ namespace voxel_game::world
 		m_player.setPos(m_player.getPos() + input.movement);
 	}
 
-	std::vector<Chunk *> World::getVisibleChunks()
+	std::vector<Chunk*> World::getVisibleChunks()
 	{
-		std::vector<Chunk *> visibleChunks;
-		for (Chunk *chunk : m_chunkManager.getChunks())
+		std::vector<Chunk*> visibleChunks;
+		for (Chunk* chunk : m_chunkManager.getChunks())
 		{
 			if (chunk->getMesh() != NULL && m_player.chunkIsVisible(chunk))
 			{
@@ -100,7 +113,7 @@ namespace voxel_game::world
 	BlockTypeId World::getBlock(BlockPos blockPos)
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);
-		Chunk *chunk = m_chunkManager.getChunk(chunkCoord);
+		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
 		if (chunk == NULL)
 		{
 			return BlockTypeId::NONE;
@@ -113,28 +126,28 @@ namespace voxel_game::world
 	void World::removeBlock(BlockPos blockPos)
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);
-		Chunk *chunk = m_chunkManager.getChunk(chunkCoord);
+		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
 		if (chunk == NULL)
 		{
 			return;
 		}
 
 		BlockPos localBlockPos = worldPosToLocalPos(blockPos);
-		chunk->putBlock(Block{localBlockPos, BlockTypeId::AIR});
+		chunk->putBlock(Block{ localBlockPos, BlockTypeId::AIR });
 		updateChunkMesh(chunk);
 	}
 
 	void World::putBlock(Block block)
 	{
 		BlockPos chunkCoord = getChunkCoord(block.pos);
-		Chunk *chunk = m_chunkManager.getChunk(chunkCoord);
+		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
 		if (chunk == NULL)
 		{
 			return;
 		}
 
 		BlockPos localBlockPos = worldPosToLocalPos(block.pos);
-		chunk->putBlock(Block{localBlockPos, block.type});
+		chunk->putBlock(Block{ localBlockPos, block.type });
 		updateChunkMesh(chunk);
 	}
 
@@ -146,7 +159,7 @@ namespace voxel_game::world
 
 		y = utils::max(0, y);
 
-		return {x, y, z};
+		return { x, y, z };
 	}
 
 	Block World::getBlockLookingAt()
@@ -165,7 +178,7 @@ namespace voxel_game::world
 
 		do
 		{
-			BlockPos blockPos{(int)pos.x - (pos.x < 0), (int)pos.y - (pos.y < 0), (int)pos.z - (pos.z < 0)};
+			BlockPos blockPos{ (int)pos.x - (pos.x < 0), (int)pos.y - (pos.y < 0), (int)pos.z - (pos.z < 0) };
 
 			if (checkedBlocks.find(blockPos) != checkedBlocks.end())
 			{
@@ -178,7 +191,7 @@ namespace voxel_game::world
 			BlockTypeId blockTypeId = getBlock(blockPos);
 			if (isSolid(blockTypeId))
 			{
-				return Block{blockPos, blockTypeId};
+				return Block{ blockPos, blockTypeId };
 			}
 
 			pos += ray;
@@ -187,22 +200,21 @@ namespace voxel_game::world
 		return NULL_BLOCK;
 	}
 
-	void World::updateChunkMesh(Chunk *chunk)
+	void World::updateChunkMesh(Chunk* chunk)
 	{
-		std::thread thread(
-			[generator = ChunkGenerator(*chunk, m_chunkManager)]() mutable
+		const std::function<void()>& job = [generator = ChunkGenerator(*chunk, m_chunkManager)]() mutable
 			{
-				log::info("New thread started");
 				generator.run();
-			});
-		thread.detach();
+			};
+		m_threadPool.queueJob(job);
+		//ChunkGenerator(*chunk, m_chunkManager).run();
 	}
 
 	void World::generateChunk(BlockPos chunkCoord)
 	{
 		log::info("Generating chunk data for chunk at " + chunkCoord);
 
-		Chunk *chunk = new Chunk(chunkCoord, this);
+		Chunk* chunk = new Chunk(chunkCoord, this);
 		m_worldGenerator.generateChunkData(*chunk);
 
 		log::info("Finished generating chunk data for chunk at " + chunkCoord);
@@ -224,6 +236,6 @@ namespace voxel_game::world
 		x %= CHUNK_SIZE;
 		z %= CHUNK_SIZE;
 
-		return BlockPos{x, worldPos.y % CHUNK_HEIGHT, z};
+		return BlockPos{ x, worldPos.y % CHUNK_HEIGHT, z };
 	}
 }

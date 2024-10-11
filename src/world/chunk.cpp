@@ -58,13 +58,12 @@ namespace voxel_game::world
 
 				g::Quad* face = cube.getFace(dir);
 
-				std::vector<GLuint> faceIndices = face->getIndices();
-				for (int j = 0; j < face->getVertexCount(); j++)
+				for (int j = 0; j < g::Quad::vertexCount; j++)
 				{
-					indices.push_back(faceIndices[j] + vertices.size());
+					indices.push_back(g::Quad::indices[j] + vertices.size());
 				}
-				std::vector<graphics::Vertex> faceVertices = face->getVertices();
-				for (int j = 0; j < face->getVertexCount(); j++)
+				std::vector<g::Vertex> faceVertices = *face->getVertices();
+				for (int j = 0; j < g::Quad::vertexCount; j++)
 				{
 					g::Vertex vert = faceVertices[j];
 					vert.m_position += blockPosVec;
@@ -73,14 +72,12 @@ namespace voxel_game::world
 			}
 		}
 
-		if (m_mesh)
-		{
-			delete m_mesh;
-			m_mesh = NULL;
-		}
+		g::Mesh* newMesh = new graphics::Mesh(vertices, indices, NULL, g::loadTextureAtlas());
 
-		// TODO: use smart pointers for m_mesh to handle automatic memory management
-		m_mesh = new graphics::Mesh(vertices, indices, NULL, g::loadTextureAtlas());
+		std::swap(m_mesh, newMesh);
+
+		delete newMesh;
+		newMesh = NULL;
 	}
 
 	void Chunk::putBlock(Block block)
@@ -115,7 +112,7 @@ namespace voxel_game::world
 
 	int to1dIndex(int x, int y, int z)
 	{
-		return x + CHUNK_SIZE * y + z * CHUNK_SIZE * CHUNK_HEIGHT;
+		return x + CHUNK_SIZE * y + z * CHUNK_SIZE_TIMES_HEIGHT;
 	}
 
 	int to1dIndex(BlockPos pos)
@@ -125,8 +122,8 @@ namespace voxel_game::world
 
 	BlockPos to3dIndex(int i)
 	{
-		int z = i / (CHUNK_SIZE * CHUNK_HEIGHT);
-		i -= (z * CHUNK_SIZE * CHUNK_HEIGHT);
+		int z = i / CHUNK_SIZE_TIMES_HEIGHT;
+		i -= (z * CHUNK_SIZE_TIMES_HEIGHT);
 		int y = i / CHUNK_SIZE;
 		int x = i % CHUNK_SIZE;
 

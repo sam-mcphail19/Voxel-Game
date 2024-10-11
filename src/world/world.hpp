@@ -10,6 +10,7 @@
 #include "../graphics/shader.hpp"
 #include "../util/mathUtils.hpp"
 #include "../util/log.hpp"
+#include "../util/threadPool.hpp"
 #include "../constants.hpp"
 
 #include <glm/gtx/string_cast.hpp>
@@ -21,9 +22,11 @@ namespace voxel_game::world
 	private:
 		ChunkManager m_chunkManager;
 		WorldGenerator m_worldGenerator;
+		utils::ThreadPool m_threadPool;
 		g::Shader* m_shader;
 
 		Player m_player;
+		BlockPos m_blockBeingBroken;
 		int m_breakBlockProgress = 0;
 
 		BlockTypeId getBlock(BlockPos blockPos);
@@ -42,6 +45,7 @@ namespace voxel_game::world
 
 	public:
 		World(WorldGenerator &worldGenerator, g::Shader* shader, Player &player);
+		~World();
 		void generate();
 		void update();
 		std::vector<Chunk *> getVisibleChunks();

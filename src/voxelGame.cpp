@@ -91,7 +91,7 @@ namespace voxel_game
 
 		m_renderer.renderPersp(perspMeshes, &m_chunkShader, m_player->getCamera(), &m_window);
 
-		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair };
+		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair->getMesh()};
 
 		m_renderer.renderOrtho(orthoMeshes, &m_uiShader, m_player->getCamera(), &m_window);
 	}

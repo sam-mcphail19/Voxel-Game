@@ -21,18 +21,34 @@ namespace voxel_game::graphics
 		BOTTOM,
 	};
 
-	static const int vertexCount = 6;
-
-	class Quad : public Mesh
+	class Quad
 	{
 	private:
+		std::vector<Vertex>* m_vertices;
+		physics::Transform* m_transform;
+		Texture* m_texture;
+
+		Mesh* m_mesh = NULL;
+
+		Quad(std::vector<Vertex>* vertices, physics::Transform* transform, Texture* texture);
 		static std::vector<Vertex>* createVertices();
 		static std::vector<Vertex>* createBlockQuadVertices(world::Block block, Direction direction, AtlasTexture texture);
 
 	public:
-		using Mesh::Mesh;
+		~Quad();
+		Mesh* getMesh();
+		std::vector<Vertex>* getVertices();
+
 		static Quad* createQuad(physics::Transform* transform, Texture* texture);
 		static Quad* createBlockQuad(world::Block block, Direction direction, AtlasTexture texture);
+
+		static const int vertexPositions[];
+		static const std::vector<GLuint> indices;
+		static const int uvs[];
+		static const std::map<Direction, glm::vec3> normalMap;
+		static const std::map<Direction, int> vertexPositionIndexMap;
+		static const std::map<Direction, int> uvIndexMap;
+		static const int vertexCount;
 	};
 
 	glm::vec3 getNormal(Direction direction);
