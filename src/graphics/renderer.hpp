@@ -7,6 +7,7 @@
 #include "shader.hpp"
 #include "camera.hpp"
 #include "window.hpp"
+#include "../world/chunk.hpp"
 #include "../util/log.hpp"
 #include "../util/timeUtils.hpp"
 
@@ -18,8 +19,13 @@ namespace voxel_game::graphics
 	{
 	public:
 		Renderer();
-		void renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera, Window *window);
-		void renderOrtho(std::vector<Mesh*> meshes, Shader *shader, Camera *camera, Window *window);
+		
+		void renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
+		void renderChunks(std::vector<world::Chunk*> chunks, Shader *shader, Camera *camera);
+		void renderOrtho(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
+
+	private:
+		void setupPerspRender(Shader* shader, Camera* camera);
 		void clear();
 	};
 }

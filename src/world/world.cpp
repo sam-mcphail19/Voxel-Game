@@ -123,6 +123,7 @@ namespace voxel_game::world
 		return chunk->getBlock(localBlockPos);
 	}
 
+	// if block is on the chunk border, need to also update its neighbour's mesh
 	void World::removeBlock(BlockPos blockPos)
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);

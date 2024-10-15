@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <unordered_map>
 #include <utility>
 #include <glm/vec3.hpp>
@@ -25,6 +26,7 @@ namespace voxel_game::world
 		World *m_world;
 		BlockTypeId *m_blocks;
 		graphics::Mesh *m_mesh = NULL;
+		std::mutex m_mutex;
 
 		bool isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager &chunkManager, std::unordered_map<Face, bool> checkedFaces);
 		Chunk *getNeighbourChunk(graphics::Direction direction, ChunkManager &chunkManager);
@@ -37,6 +39,7 @@ namespace voxel_game::world
 		BlockTypeId getBlock(BlockPos blockPos);
 		BlockPos getOrigin() const;
 		BlockPos getChunkCoord();
+		std::unique_lock<std::mutex> acquireLock();
 		graphics::Mesh *getMesh();
 	};
 

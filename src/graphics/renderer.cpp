@@ -8,18 +8,9 @@ namespace voxel_game::graphics
 
 	Renderer::Renderer() {}
 
-	void Renderer::renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera, Window *window)
+	void Renderer::renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera)
 	{
-		clear();
-
-		shader->bind();
-		
-		shader->setUniform1f(CURR_TIME_UNIFORM, utils::getElapsedTime());
-
-		const glm::mat4 perspViewMat = camera->viewMatrix();
-
-		shader->setUniformMat4(VIEW_UNIFORM, perspViewMat);
-		shader->setUniformMat4(PROJ_UNIFORM, perspProjMat);
+		setupPerspRender(shader, camera);
 
 		for (Mesh* mesh : meshes)
 		{
@@ -27,7 +18,18 @@ namespace voxel_game::graphics
 		}
 	}
 
-	void Renderer::renderOrtho(std::vector<Mesh*> meshes, Shader* shader, Camera* camera, Window* window)
+	void Renderer::renderChunks(std::vector<world::Chunk*> chunks, Shader* shader, Camera* camera)
+	{
+		setupPerspRender(shader, camera);
+
+		for (world::Chunk* chunk: chunks)
+		{
+			chunk->acquireLock();
+			chunk->getMesh()->render();
+		}
+	}
+
+	void Renderer::renderOrtho(std::vector<Mesh*> meshes, Shader* shader, Camera* camera)
 	{
 		glClear(GL_DEPTH_BUFFER_BIT); // Always render ortho meshes on top
 
@@ -42,6 +44,20 @@ namespace voxel_game::graphics
 
 			mesh->render();
 		}
+	}
+
+	void Renderer::setupPerspRender(Shader* shader, Camera* camera)
+	{
+		clear();
+
+		shader->bind();
+
+		shader->setUniform1f(CURR_TIME_UNIFORM, utils::getElapsedTime());
+
+		const glm::mat4 perspViewMat = camera->viewMatrix();
+
+		shader->setUniformMat4(VIEW_UNIFORM, perspViewMat);
+		shader->setUniformMat4(PROJ_UNIFORM, perspProjMat);
 	}
 
 	void Renderer::clear()

@@ -74,6 +74,8 @@ namespace voxel_game::world
 
 		g::Mesh* newMesh = new graphics::Mesh(vertices, indices, NULL, g::loadTextureAtlas());
 
+		std::unique_lock<std::mutex> lock = acquireLock();
+
 		std::swap(m_mesh, newMesh);
 
 		delete newMesh;
@@ -103,6 +105,11 @@ namespace voxel_game::world
 	BlockPos Chunk::getChunkCoord()
 	{
 		return { m_origin.x / CHUNK_SIZE, m_origin.y / CHUNK_HEIGHT, m_origin.z / CHUNK_SIZE };
+	}
+
+	std::unique_lock<std::mutex> Chunk::acquireLock()
+	{
+		return std::unique_lock<std::mutex>(m_mutex);
 	}
 
 	graphics::Mesh* Chunk::getMesh()

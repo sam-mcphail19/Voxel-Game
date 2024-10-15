@@ -78,7 +78,6 @@ namespace voxel_game
 	void VoxelGame::draw()
 	{
 		m_window.update();
-		m_renderer.clear();
 
 		std::vector<world::Chunk*> visibleChunks = m_world->getVisibleChunks();
 		std::vector<g::Mesh*> perspMeshes;
@@ -89,11 +88,11 @@ namespace voxel_game
 			perspMeshes.push_back(chunk->getMesh());
 		}
 
-		m_renderer.renderPersp(perspMeshes, &m_chunkShader, m_player->getCamera(), &m_window);
+		m_renderer.renderPersp(perspMeshes, &m_chunkShader, m_player->getCamera());
 
 		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair->getMesh()};
 
-		m_renderer.renderOrtho(orthoMeshes, &m_uiShader, m_player->getCamera(), &m_window);
+		m_renderer.renderOrtho(orthoMeshes, &m_uiShader, m_player->getCamera());
 	}
 
 	bool VoxelGame::shouldClose()
