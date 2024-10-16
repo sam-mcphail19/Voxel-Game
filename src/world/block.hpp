@@ -46,6 +46,11 @@ namespace voxel_game::world
 		return {pos1.x + pos2.x, pos1.y + pos2.y, pos1.z + pos2.z};
 	}
 
+	inline BlockPos operator-(const BlockPos& pos1, const BlockPos& pos2)
+	{
+		return { pos1.x - pos2.x, pos1.y - pos2.y, pos1.z - pos2.z };
+	}
+
 	inline void operator+=(BlockPos &pos1, const BlockPos &pos2)
 	{
 		pos1 = pos1 + pos2;

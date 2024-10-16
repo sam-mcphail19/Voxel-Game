@@ -15,8 +15,6 @@ namespace voxel_game::world
 
 		glm::vec3 origin = toVec3(m_origin);
 
-		std::unordered_map<Face, bool> checkedFaces;
-
 		for (int i = 0; i < CHUNK_BLOCK_COUNT; i++)
 		{
 			BlockPos blockPos = to3dIndex(i);
@@ -32,7 +30,7 @@ namespace voxel_game::world
 			for (int i = 0; i < 6; i++)
 			{
 				g::Direction dir = (g::Direction)i;
-				if (isFaceVisible(blockPos, dir, chunkManager, checkedFaces))
+				if (isFaceVisible(blockPos, dir, chunkManager))
 				{
 					anyFaceVisible = true;
 					break;
@@ -51,7 +49,7 @@ namespace voxel_game::world
 			{
 				g::Direction dir = (g::Direction)i;
 
-				if (!isFaceVisible(blockPos, dir, chunkManager, checkedFaces))
+				if (!isFaceVisible(blockPos, dir, chunkManager))
 				{
 					continue;
 				}
@@ -142,14 +140,8 @@ namespace voxel_game::world
 		return glm::vec3(blockPos.x, blockPos.y, blockPos.z);
 	}
 
-	bool Chunk::isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager& chunkManager, std::unordered_map<Face, bool> checkedFaces)
+	bool Chunk::isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager& chunkManager)
 	{
-		Face face{ pos, direction };
-		if (checkedFaces.find(face) != checkedFaces.end())
-		{
-			return checkedFaces[face];
-		}
-
 		BlockPos neighbourPos = pos + toBlockPos(getNormal(direction));
 		bool neighbourInThisChunk = neighbourPos.x >= 0 &&
 			neighbourPos.x < CHUNK_SIZE &&
@@ -161,7 +153,7 @@ namespace voxel_game::world
 		if (neighbourInThisChunk)
 		{
 			BlockTypeId neighbour = getBlock(neighbourPos);
-			return neighbour == BlockTypeId::NONE || neighbour == BlockTypeId::AIR;
+			return neighbour == BlockTypeId::AIR || neighbour == BlockTypeId::NONE;
 		}
 
 		Chunk* neighbourChunk = getNeighbourChunk(direction, chunkManager);
@@ -177,7 +169,7 @@ namespace voxel_game::world
 
 		BlockTypeId neighbour = neighbourChunk->getBlock(neighbourPos);
 
-		return neighbour == BlockTypeId::NONE || neighbour == BlockTypeId::AIR;
+		return neighbour == BlockTypeId::AIR || neighbour == BlockTypeId::NONE;
 	}
 
 	Chunk* Chunk::getNeighbourChunk(graphics::Direction direction, ChunkManager& chunkManager)

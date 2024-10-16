@@ -43,6 +43,8 @@ namespace voxel_game::world
 		void updateChunkMesh(Chunk* chunk);
 		void generateChunk(BlockPos chunkCoord);
 
+		bool allChunksGenerated();
+
 	public:
 		World(WorldGenerator &worldGenerator, g::Shader* shader, Player &player);
 		~World();

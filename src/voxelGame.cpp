@@ -80,15 +80,7 @@ namespace voxel_game
 		m_window.update();
 
 		std::vector<world::Chunk*> visibleChunks = m_world->getVisibleChunks();
-		std::vector<g::Mesh*> perspMeshes;
-		perspMeshes.reserve(visibleChunks.size());
-
-		for (world::Chunk* chunk : visibleChunks)
-		{
-			perspMeshes.push_back(chunk->getMesh());
-		}
-
-		m_renderer.renderPersp(perspMeshes, &m_chunkShader, m_player->getCamera());
+		m_renderer.renderChunks(visibleChunks, &m_chunkShader, m_player->getCamera());
 
 		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair->getMesh()};
 
