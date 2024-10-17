@@ -16,7 +16,9 @@ namespace voxel_game
 		float yaw;
 		glm::vec3 movement;
 		bool mouseOneDown;
+		bool mouseOnePressed;
 		bool mouseTwoDown;
+		bool mouseTwoPressed;
 	};
 
 	class Player

@@ -101,8 +101,6 @@ namespace voxel_game::graphics
 			toggleWireframe();
 		}
 
-		input::update();
-
 		glfwSwapBuffers(m_window);
 		glfwPollEvents();
 	}

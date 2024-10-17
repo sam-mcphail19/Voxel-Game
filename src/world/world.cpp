@@ -53,25 +53,25 @@ namespace voxel_game::world
 			}
 		}
 
-		Block blockLookingAt = getBlockLookingAt();
-		if (blockLookingAt != NULL_BLOCK)
+		RaycastResult blockLookingAt = getBlockLookingAt();
+		if (blockLookingAt.block != NULL_BLOCK)
 		{
 			m_shader->setUniform1i(IS_SELECTED_BLOCK_UNIFORM, 1);
-			m_shader->setUniform3i(SELECTED_BLOCK_UNIFORM, blockLookingAt.pos.x, blockLookingAt.pos.y, blockLookingAt.pos.z);
+			m_shader->setUniform3i(SELECTED_BLOCK_UNIFORM, blockLookingAt.block.pos.x, blockLookingAt.block.pos.y, blockLookingAt.block.pos.z);
 
 			if (input.mouseOneDown)
 			{
-				if (m_blockBeingBroken != blockLookingAt.pos)
+				if (m_blockBeingBroken != blockLookingAt.block.pos)
 				{
 					m_breakBlockProgress = 0;
-					m_blockBeingBroken = blockLookingAt.pos;
+					m_blockBeingBroken = blockLookingAt.block.pos;
 				}
 
 				m_breakBlockProgress++;
 
 				if (m_breakBlockProgress >= 30)
 				{
-					removeBlock(blockLookingAt.pos);
+					removeBlock(blockLookingAt.block.pos);
 					m_breakBlockProgress = 0;
 				}
 
@@ -88,10 +88,14 @@ namespace voxel_game::world
 				m_breakBlockProgress = 0;
 			}
 
-			if (input.mouseTwoDown)
+			if (input.mouseTwoPressed)
 			{
-				// need to get the side of the block being looked at and place it there
-				// putBlock(Block{blockLookingAt.pos,});;
+				// TODO: block type selection
+				Block block = {blockLookingAt.block.pos + g::getNormalI(blockLookingAt.hitFace), BlockTypeId::STONE};
+				if (canPlaceBlock(block))
+				{
+					putBlock(block);
+				}
 			}
 		}
 		else
@@ -120,7 +124,7 @@ namespace voxel_game::world
 		return visibleChunks;
 	}
 
-	BlockTypeId World::getBlock(BlockPos blockPos)
+	BlockTypeId World::getBlock(const BlockPos& blockPos)
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
@@ -133,7 +137,7 @@ namespace voxel_game::world
 		return chunk->getBlock(localBlockPos);
 	}
 
-	void World::removeBlock(BlockPos blockPos)
+	void World::removeBlock(const BlockPos& blockPos)
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
@@ -181,7 +185,7 @@ namespace voxel_game::world
 		}
 	}
 
-	void World::putBlock(Block block)
+	void World::putBlock(const Block& block)
 	{
 		BlockPos chunkCoord = getChunkCoord(block.pos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
@@ -195,6 +199,12 @@ namespace voxel_game::world
 		updateChunkMesh(chunk);
 	}
 
+	bool World::canPlaceBlock(const Block& block)
+	{
+		// TODO
+		return true;
+	}
+
 	BlockPos World::getChunkCoord(BlockPos pos)
 	{
 		int x = utils::floorDiv(pos.x, CHUNK_SIZE);
@@ -206,18 +216,16 @@ namespace voxel_game::world
 		return { x, y, z };
 	}
 
-	Block World::getBlockLookingAt()
+	RaycastResult World::getBlockLookingAt()
 	{
 		// TODO: test other param values and move to constants.hpp
 		return raycast(m_player.getCamera()->getPos(), m_player.getCamera()->viewDir(), 6, 5);
 	}
 
-	Block World::raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock)
+	RaycastResult World::raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock)
 	{
 		glm::vec3 ray = glm::normalize(rayDir) * (1.f / iterationsPerBlock);
-
 		glm::vec3 pos = glm::vec3(startPos);
-
 		std::set<BlockPos> checkedBlocks;
 
 		do
@@ -231,17 +239,36 @@ namespace voxel_game::world
 			}
 
 			checkedBlocks.insert(blockPos);
-
 			BlockTypeId blockTypeId = getBlock(blockPos);
+
+			if (isSolid(blockTypeId)) {
+				g::Direction hitFace = g::Direction::NONE;
+
+				glm::vec3 blockCenter = glm::vec3(blockPos.x + 0.5f, blockPos.y + 0.5f, blockPos.z + 0.5f);
+				glm::vec3 hitPoint = pos - blockCenter;
+
+				if (fabs(hitPoint.x) > fabs(hitPoint.y) && fabs(hitPoint.x) > fabs(hitPoint.z)) {
+					hitFace = (hitPoint.x > 0) ? g::Direction::RIGHT : g::Direction::LEFT;
+				}
+				else if (fabs(hitPoint.y) > fabs(hitPoint.x) && fabs(hitPoint.y) > fabs(hitPoint.z)) {
+					hitFace = (hitPoint.y > 0) ? g::Direction::TOP : g::Direction::BOTTOM;
+				}
+				else {
+					hitFace = (hitPoint.z > 0) ? g::Direction::FRONT : g::Direction::BACK;
+				}
+
+				return { Block{ blockPos, blockTypeId }, hitFace };
+			}
+
 			if (isSolid(blockTypeId))
 			{
-				return Block{ blockPos, blockTypeId };
+				return { Block{ blockPos, blockTypeId } };
 			}
 
 			pos += ray;
 		} while (glm::length(pos - startPos) < maxDist && pos.y >= 0);
 
-		return NULL_BLOCK;
+		return { NULL_BLOCK, g::Direction::NONE };
 	}
 
 	void World::updateChunkMesh(Chunk* chunk)
@@ -280,7 +307,7 @@ namespace voxel_game::world
 		return true;
 	}
 
-	BlockPos worldPosToLocalPos(const BlockPos worldPos)
+	BlockPos worldPosToLocalPos(const BlockPos& worldPos)
 	{
 		int x = worldPos.x;
 		int z = worldPos.z;

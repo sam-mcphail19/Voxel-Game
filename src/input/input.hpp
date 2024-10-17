@@ -3,6 +3,7 @@
 #include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "../util/log.hpp"
 #include "../constants.hpp"
 
 namespace voxel_game::input
@@ -24,5 +25,6 @@ namespace voxel_game::input
 	bool isKeyPressed(int keycode);
 	bool isKeyReleased(int keycode);
 	bool isButtonPressed(int button);
+	bool isButtonDown(int button);
 	void getMousePos(double& x, double& y);
 }

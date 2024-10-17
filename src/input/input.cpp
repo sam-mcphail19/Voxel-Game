@@ -31,6 +31,10 @@ namespace voxel_game::input
 			{
 				buttons[i] = KeyState::NONE;
 			}
+			if (buttons[i] == KeyState::PRESSED)
+			{
+				buttons[i] = KeyState::DOWN;
+			}
 		}
 	}
 
@@ -87,6 +91,11 @@ namespace voxel_game::input
 	}
 
 	bool isButtonPressed(int button)
+	{
+		return buttons[button] == KeyState::PRESSED;
+	}
+
+	bool isButtonDown(int button)
 	{
 		return buttons[button] == KeyState::PRESSED || buttons[button] == KeyState::DOWN;
 	}

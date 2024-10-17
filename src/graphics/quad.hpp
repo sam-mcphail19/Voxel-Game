@@ -19,6 +19,7 @@ namespace voxel_game::graphics
 		LEFT,
 		TOP,
 		BOTTOM,
+		NONE,
 	};
 
 	class Quad
@@ -34,6 +35,7 @@ namespace voxel_game::graphics
 		static std::vector<Vertex>* createVertices();
 		static std::vector<Vertex>* createBlockQuadVertices(world::Block block, Direction direction, AtlasTexture texture);
 
+
 	public:
 		~Quad();
 		Mesh* getMesh();
@@ -41,6 +43,7 @@ namespace voxel_game::graphics
 
 		static Quad* createQuad(physics::Transform* transform, Texture* texture);
 		static Quad* createBlockQuad(world::Block block, Direction direction, AtlasTexture texture);
+
 
 		static const int vertexPositions[];
 		static const std::vector<GLuint> indices;
@@ -51,5 +54,7 @@ namespace voxel_game::graphics
 		static const int vertexCount;
 	};
 
+	std::string getName(Direction direction);
 	glm::vec3 getNormal(Direction direction);
+	world::BlockPos getNormalI(Direction direction);
 }

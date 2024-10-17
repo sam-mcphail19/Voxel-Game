@@ -17,6 +17,12 @@
 
 namespace voxel_game::world
 {
+	struct RaycastResult
+	{
+		Block block;
+		g::Direction hitFace;
+	};
+
 	class World
 	{
 	private:
@@ -29,16 +35,16 @@ namespace voxel_game::world
 		BlockPos m_blockBeingBroken;
 		int m_breakBlockProgress = 0;
 
-		BlockTypeId getBlock(BlockPos blockPos);
-		void removeBlock(BlockPos blockPos);
-		void putBlock(Block block);
+		BlockTypeId getBlock(const BlockPos& blockPos);
+		void removeBlock(const BlockPos& blockPos);
+		void putBlock(const Block& block);
+		bool canPlaceBlock(const Block& block);
 
 		BlockPos getChunkCoord(BlockPos pos);
 		// TODO: rename
-		Block getBlockLookingAt();
+		RaycastResult getBlockLookingAt();
 		// Return the of the first block that intersects with the ray
-		// TODO: rename
-		Block raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock);
+		RaycastResult raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock);
 
 		void updateChunkMesh(Chunk* chunk);
 		void generateChunk(BlockPos chunkCoord);
@@ -75,5 +81,5 @@ namespace voxel_game::world
 		ChunkManager &m_chunkManager;
 	};
 
-	BlockPos worldPosToLocalPos(const BlockPos worldPos);
+	BlockPos worldPosToLocalPos(const BlockPos& worldPos);
 }

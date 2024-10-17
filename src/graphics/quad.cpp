@@ -143,11 +143,6 @@ namespace voxel_game::graphics
 		return new Quad(createBlockQuadVertices(block, direction, texture), NULL, loadTextureAtlas());
 	}
 
-	glm::vec3 getNormal(Direction direction)
-	{
-		return Quad::normalMap.at(direction);
-	}
-
 	std::vector<Vertex>* Quad::createVertices()
 	{
 		std::vector<Vertex>* vertices = new std::vector<Vertex>;
@@ -196,5 +191,39 @@ namespace voxel_game::graphics
 		}
 
 		return vertices;
+	}
+
+	const std::map<Direction, std::string> directionNames = {
+		{Direction::FRONT, "FRONT"},
+		{Direction::BACK, "BACK"},
+		{Direction::RIGHT, "RIGHT"},
+		{Direction::LEFT, "LEFT"},
+		{Direction::TOP, "TOP"},
+		{Direction::BOTTOM, "BOTTOM"},
+		{Direction::NONE, "NONE"},
+	};
+
+	std::string getName(Direction direction)
+	{
+		return directionNames.at(direction);
+	}
+
+	glm::vec3 getNormal(Direction direction)
+	{
+		return Quad::normalMap.at(direction);
+	}
+
+	const std::map<Direction, world::BlockPos> iNormalMap = {
+		{Direction::FRONT, world::BlockPos{0, 0, 1}},
+		{Direction::BACK, world::BlockPos{0, 0, -1}},
+		{Direction::RIGHT, world::BlockPos{1, 0, 0}},
+		{Direction::LEFT, world::BlockPos{-1, 0, 0}},
+		{Direction::TOP, world::BlockPos{0, 1, 0}},
+		{Direction::BOTTOM, world::BlockPos{0, -1, 0}},
+	};
+
+	world::BlockPos getNormalI(Direction direction)
+	{
+		return iNormalMap.at(direction);
 	}
 }

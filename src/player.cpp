@@ -19,8 +19,10 @@ namespace voxel_game
 		double oldY = m_mouseY;
 		input::getMousePos(m_mouseX, m_mouseY);
 
-		bool mouseOneDown = input::isButtonPressed(GLFW_MOUSE_BUTTON_1);
-		bool mouseTwoDown = input::isButtonPressed(GLFW_MOUSE_BUTTON_2);
+		bool mouseOneDown = input::isButtonDown(GLFW_MOUSE_BUTTON_1);
+		bool mouseOnePressed = input::isButtonPressed(GLFW_MOUSE_BUTTON_1);
+		bool mouseTwoDown = input::isButtonDown(GLFW_MOUSE_BUTTON_2);
+		bool mouseTwoPressed = input::isButtonPressed(GLFW_MOUSE_BUTTON_2);
 
 		float pitch = (m_mouseY - oldY) * MOUSE_SENS;
 		float yaw = (m_mouseX - oldX) * MOUSE_SENS;
@@ -72,7 +74,7 @@ namespace voxel_game
 
 		m_camera->setPos(m_pos);
 
-		return { pitch, yaw, movement, mouseOneDown, mouseTwoDown };
+		return { pitch, yaw, movement, mouseOneDown, mouseOnePressed, mouseTwoDown, mouseTwoPressed };
 	}
 
 	bool Player::isAffectedByGravity()

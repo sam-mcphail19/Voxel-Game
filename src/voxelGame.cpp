@@ -40,6 +40,7 @@ namespace voxel_game
 			m_lastTickTime = startTime;
 
 			updateGame();
+			input::update();
 
 			m_ticks++;
 		}
