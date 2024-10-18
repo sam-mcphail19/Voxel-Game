@@ -25,7 +25,7 @@ namespace voxel_game
 		const std::string m_title = "Voxel Game";
 
 		graphics::Renderer m_renderer = graphics::Renderer();
-		graphics::Window m_window = graphics::Window("Voxel Game", 1280, 720);
+		graphics::Window m_window = graphics::Window(m_title, 1280, 720);
 		graphics::Shader m_chunkShader = graphics::Shader("chunk.vs", "chunk.fs");
 		graphics::Shader m_uiShader = graphics::Shader("ui.vs", "ui.fs");
 

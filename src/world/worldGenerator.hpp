@@ -15,11 +15,11 @@ namespace voxel_game::world
 		std::unordered_map<int, int> m_heightMap;
 
 		BlockTypeId getBlockType(BlockPos pos);
-		int getHeight(int x, int z);
 		int getHeightMapHash(int x, int z);
 
 	public:
 		WorldGenerator(long seed);
+		int getHeight(int x, int z);
 		void generateChunkData(Chunk &chunk);
 	};
 }

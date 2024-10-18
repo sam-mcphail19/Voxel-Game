@@ -9,4 +9,6 @@ diagsession
 Voxel-Game.vcxproj
 Voxel-Game.vcxproj.filters
 Voxel-Game.vcxproj.user
+
 get_sources.sh
+noise_tool/texture.png
