@@ -26,10 +26,13 @@ namespace voxel_game::world
 		World* m_world;
 		BlockTypeId* m_blocks;
 		graphics::Mesh* m_mesh = NULL;
+		graphics::Mesh* m_transparentMesh = NULL;
 		std::mutex m_mutex;
 
-		bool isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager& chunkManager);
+		bool isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager);
 		Chunk* getNeighbourChunk(graphics::Direction direction, ChunkManager& chunkManager);
+
+		void addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
 
 	public:
 		Chunk(BlockPos chunkCoord, World* world);
@@ -41,6 +44,7 @@ namespace voxel_game::world
 		BlockPos getChunkCoord();
 		std::unique_lock<std::mutex> acquireLock();
 		graphics::Mesh* getMesh();
+		graphics::Mesh* getTransparentMesh();
 	};
 
 	int to1dIndex(int x, int y, int z);

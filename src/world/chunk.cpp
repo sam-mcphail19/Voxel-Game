@@ -11,7 +11,9 @@ namespace voxel_game::world
 	void Chunk::updateMesh(ChunkManager& chunkManager)
 	{
 		std::vector<g::Vertex> vertices;
+		std::vector<g::Vertex> transparentVertices;
 		std::vector<GLuint> indices;
+		std::vector<GLuint> transparentIndices;
 
 		glm::vec3 origin = toVec3(m_origin);
 
@@ -30,7 +32,7 @@ namespace voxel_game::world
 			for (int i = 0; i < 6; i++)
 			{
 				g::Direction dir = (g::Direction)i;
-				if (isFaceVisible(blockPos, dir, chunkManager))
+				if (isFaceVisible(blockTypeId, Face{ blockPos, dir }, chunkManager))
 				{
 					anyFaceVisible = true;
 					break;
@@ -49,35 +51,51 @@ namespace voxel_game::world
 			{
 				g::Direction dir = (g::Direction)i;
 
-				if (!isFaceVisible(blockPos, dir, chunkManager))
+				if (!isFaceVisible(blockTypeId, Face{ blockPos, dir }, chunkManager))
 				{
 					continue;
 				}
 
 				g::Quad* face = cube.getFace(dir);
 
-				for (int j = 0; j < g::Quad::vertexCount; j++)
+				if (blockTypeId == BlockTypeId::WATER)
 				{
-					indices.push_back(g::Quad::indices[j] + vertices.size());
+					addFaceToMesh(face, blockPosVec, transparentVertices, transparentIndices);
 				}
-				std::vector<g::Vertex> faceVertices = *face->getVertices();
-				for (int j = 0; j < g::Quad::vertexCount; j++)
+				else
 				{
-					g::Vertex vert = faceVertices[j];
-					vert.m_position += blockPosVec;
-					vertices.push_back(vert);
+					addFaceToMesh(face, blockPosVec, vertices, indices);
 				}
 			}
 		}
 
 		g::Mesh* newMesh = new graphics::Mesh(vertices, indices, NULL, g::loadTextureAtlas());
+		g::Mesh* newTransparentMesh = new graphics::Mesh(transparentVertices, transparentIndices, NULL, g::loadTextureAtlas());
 
 		std::unique_lock<std::mutex> lock = acquireLock();
 
 		std::swap(m_mesh, newMesh);
+		std::swap(m_transparentMesh, newTransparentMesh);
 
 		delete newMesh;
 		newMesh = NULL;
+		delete newTransparentMesh;
+		newTransparentMesh = NULL;
+	}
+
+	void Chunk::addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
+	{
+		for (int j = 0; j < g::Quad::vertexCount; j++)
+		{
+			indices.push_back(g::Quad::indices[j] + vertices.size());
+		}
+		std::vector<g::Vertex> faceVertices = *face->getVertices();
+		for (int j = 0; j < g::Quad::vertexCount; j++)
+		{
+			g::Vertex vert = faceVertices[j];
+			vert.m_position += blockPos;
+			vertices.push_back(vert);
+		}
 	}
 
 	void Chunk::putBlock(Block block)
@@ -115,6 +133,11 @@ namespace voxel_game::world
 		return m_mesh;
 	}
 
+	graphics::Mesh* Chunk::getTransparentMesh()
+	{
+		return m_transparentMesh;
+	}
+
 	int to1dIndex(int x, int y, int z)
 	{
 		return x + CHUNK_SIZE * y + z * CHUNK_SIZE_TIMES_HEIGHT;
@@ -140,9 +163,9 @@ namespace voxel_game::world
 		return glm::vec3(blockPos.x, blockPos.y, blockPos.z);
 	}
 
-	bool Chunk::isFaceVisible(BlockPos pos, graphics::Direction direction, ChunkManager& chunkManager)
+	bool Chunk::isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager)
 	{
-		BlockPos neighbourPos = pos + toBlockPos(getNormal(direction));
+		BlockPos neighbourPos = face.pos + toBlockPos(getNormal(face.dir));
 		bool neighbourInThisChunk = neighbourPos.x >= 0 &&
 			neighbourPos.x < CHUNK_SIZE &&
 			neighbourPos.z >= 0 &&
@@ -150,31 +173,39 @@ namespace voxel_game::world
 			neighbourPos.y >= 0 &&
 			neighbourPos.y < CHUNK_HEIGHT;
 
+		BlockTypeId neighbour;
+
 		if (neighbourInThisChunk)
 		{
-			BlockTypeId neighbour = getBlock(neighbourPos);
-			return neighbour == BlockTypeId::AIR || neighbour == BlockTypeId::NONE;
+			neighbour = getBlock(neighbourPos);
 		}
-
-		Chunk* neighbourChunk = getNeighbourChunk(direction, chunkManager);
-
-		if (neighbourChunk == NULL)
+		else
 		{
-			return true;
+			Chunk* neighbourChunk = getNeighbourChunk(face.dir, chunkManager);
+
+			if (neighbourChunk == NULL)
+			{
+				neighbour = m_world->getBlock(m_origin + neighbourPos);
+			}
+			else 
+			{
+				// TODO: Should we just call world.getBlock in this case too?
+				BlockPos neighbourLocalPos = worldPosToLocalPos(m_origin + neighbourPos);
+				neighbour = neighbourChunk->getBlock(neighbourLocalPos);
+			}
 		}
 
-		neighbourPos.x = (CHUNK_SIZE + (neighbourPos.x % CHUNK_SIZE)) % CHUNK_SIZE;
-		neighbourPos.y %= CHUNK_HEIGHT;
-		neighbourPos.z = (CHUNK_SIZE + (neighbourPos.z % CHUNK_SIZE)) % CHUNK_SIZE;
+		if (blockTypeId == BlockTypeId::WATER)
+		{
+			return isTransparent(neighbour) && neighbour != BlockTypeId::WATER;
+		}
 
-		BlockTypeId neighbour = neighbourChunk->getBlock(neighbourPos);
-
-		return neighbour == BlockTypeId::AIR || neighbour == BlockTypeId::NONE;
+		return isTransparent(neighbour);
 	}
 
 	Chunk* Chunk::getNeighbourChunk(graphics::Direction direction, ChunkManager& chunkManager)
 	{
-		BlockPos chunkCoord = getChunkCoord() + toBlockPos(getNormal(direction));
+		BlockPos chunkCoord = getChunkCoord() + getNormalI(direction);
 		return chunkManager.getChunk(chunkCoord);
 	}
 }

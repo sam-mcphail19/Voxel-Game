@@ -2,7 +2,10 @@
 
 namespace voxel_game::world
 {
-    WorldGenerator::WorldGenerator(long seed) : m_noiseGenerator(NoiseGenerator(seed)) {}
+    WorldGenerator::WorldGenerator(long seed) : m_noiseGenerator(NoiseGenerator(seed))
+    {
+        m_heightMapMutex = new std::mutex();
+    }
 
     void WorldGenerator::generateChunkData(Chunk &chunk)
     {
@@ -29,12 +32,26 @@ namespace voxel_game::world
 
         if (pos.y > height)
         {
-            return BlockTypeId::AIR;
+            if (pos.y > WATER_HEIGHT)
+            {
+                return BlockTypeId::AIR;
+            }
+            return BlockTypeId::WATER;
         }
 
         if (pos.y == height)
         {
-            return BlockTypeId::GRASS;
+            if (pos.y > WATER_HEIGHT)
+            {
+                return BlockTypeId::GRASS;
+            }
+
+            if (pos.y == WATER_HEIGHT)
+            {
+                return BlockTypeId::SAND;
+            }
+
+            return BlockTypeId::DIRT;
         }
 
         if (pos.y > height - 3)
@@ -48,12 +65,15 @@ namespace voxel_game::world
     int WorldGenerator::getHeight(int x, int z)
     {
         int key = getHeightMapHash(x, z);
+        std::unique_lock<std::mutex> lock(*m_heightMapMutex);
+
         if (m_heightMap.find(key) != m_heightMap.end())
         {
             return m_heightMap[key];
         }
 
         float noise = m_noiseGenerator.noise2(x, z, 0.05f, 2.f, 0.5f, 3);
+        //float pv = fabs(m_noiseGenerator.noise2(x, z, 0.01f, 2.f, 0.5f, 1) * 2 - 1);
 
         int height = (int) (noise * WORLD_HEIGHT / 1.5f);
         m_heightMap[key] = height;

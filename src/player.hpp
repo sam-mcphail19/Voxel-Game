@@ -46,7 +46,7 @@ namespace voxel_game
 		bool isAffectedByCollision();
 		bool chunkIsVisible(world::Chunk* chunk);
 
-		glm::vec3 getPos();
+		glm::vec3 getPos() const;
 		glm::vec3 getVelocity();
 		graphics::Camera* getCamera();
 

@@ -26,6 +26,7 @@ namespace voxel_game::graphics
 		{
 			chunk->acquireLock();
 			chunk->getMesh()->render();
+			chunk->getTransparentMesh()->render();
 		}
 	}
 

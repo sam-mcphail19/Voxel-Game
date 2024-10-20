@@ -91,7 +91,7 @@ namespace voxel_game::world
 			if (input.mouseTwoPressed)
 			{
 				// TODO: block type selection
-				Block block = {blockLookingAt.block.pos + g::getNormalI(blockLookingAt.hitFace), BlockTypeId::STONE};
+				Block block = { blockLookingAt.block.pos + g::getNormalI(blockLookingAt.hitFace), BlockTypeId::STONE };
 				if (canPlaceBlock(block))
 				{
 					putBlock(block);
@@ -121,6 +121,13 @@ namespace voxel_game::world
 				visibleChunks.push_back(chunk);
 			}
 		}
+
+		std::sort(visibleChunks.begin(), visibleChunks.end(), [&](Chunk* chunk1, Chunk* chunk2)
+			{
+				return chunkIsFurtherFromPlayer(chunk1, chunk2, m_player);
+			}
+		);
+
 		return visibleChunks;
 	}
 
@@ -130,7 +137,7 @@ namespace voxel_game::world
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
 		if (chunk == NULL)
 		{
-			return BlockTypeId::NONE;
+			return m_worldGenerator.getBlockType(blockPos);
 		}
 
 		BlockPos localBlockPos = worldPosToLocalPos(blockPos);
@@ -305,6 +312,17 @@ namespace voxel_game::world
 			}
 		}
 		return true;
+	}
+
+	bool World::chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player)
+	{
+		BlockPos chunk1Center = chunk1->getOrigin() + BlockPos{ CHUNK_SIZE / 2, 0, CHUNK_SIZE / 2 };
+		BlockPos chunk2Center = chunk2->getOrigin() + BlockPos{ CHUNK_SIZE / 2, 0, CHUNK_SIZE / 2 };
+
+		float chunk1Dist = glm::length(player.getPos() - toVec3(chunk1Center));
+		float chunk2Dist = glm::length(player.getPos() - toVec3(chunk2Center));
+
+		return chunk1Dist > chunk2Dist;
 	}
 
 	BlockPos worldPosToLocalPos(const BlockPos& worldPos)

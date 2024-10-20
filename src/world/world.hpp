@@ -35,7 +35,6 @@ namespace voxel_game::world
 		BlockPos m_blockBeingBroken;
 		int m_breakBlockProgress = 0;
 
-		BlockTypeId getBlock(const BlockPos& blockPos);
 		void removeBlock(const BlockPos& blockPos);
 		void putBlock(const Block& block);
 		bool canPlaceBlock(const Block& block);
@@ -51,12 +50,15 @@ namespace voxel_game::world
 
 		bool allChunksGenerated();
 
+		bool chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player);
+
 	public:
 		World(WorldGenerator &worldGenerator, g::Shader* shader, Player &player);
 		~World();
 		void generate();
 		void update();
 		std::vector<Chunk *> getVisibleChunks();
+		BlockTypeId getBlock(const BlockPos& blockPos);
 	};
 
 	class ChunkGenerator

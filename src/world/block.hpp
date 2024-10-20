@@ -13,10 +13,12 @@ namespace voxel_game::world
 	{
 		NONE,
 		AIR,
+		WATER,
 		BEDROCK,
 		STONE,
 		DIRT,
-		GRASS
+		GRASS,
+		SAND,
 	};
 
 	std::string toString(BlockTypeId id);

@@ -10,7 +10,7 @@ namespace voxel_game
 
 		g::createTextureAtlas();
 
-		m_player = new Player(glm::vec3(0, 45, 0));
+		m_player = new Player(glm::vec3(0, 60, 0));
 
 		physics::Transform* crosshairTransform = new physics::Transform(
 			glm::vec3(-0.5, -0.5, 0),
@@ -51,6 +51,7 @@ namespace voxel_game
 
 		const auto msSinceLastTpsLog = std::chrono::duration_cast<std::chrono::milliseconds>(startTime - m_lastTpsLogTime).count();
 
+		// TODO: add this to the window title instead of logging it
 		if (msSinceLastTpsLog > 1000)
 		{
 			log::info("TPS: " + std::to_string(m_ticks));

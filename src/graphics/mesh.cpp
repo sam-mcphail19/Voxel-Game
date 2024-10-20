@@ -48,6 +48,12 @@ namespace voxel_game::graphics
 		glGenBuffers(1, &m_iVbo);
 		glGenBuffers(1, &m_ibo);
 
+		if (m_vertices.size() == 0)
+		{
+			m_isInit = true;
+			return;
+		}
+
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);

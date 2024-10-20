@@ -98,7 +98,7 @@ namespace voxel_game
 		return std::sqrt(x * x + z * z) < CHUNK_RENDER_DISTANCE_IN_BLOCKS;
 	}
 
-	glm::vec3 Player::getPos()
+	glm::vec3 Player::getPos() const
 	{
 		return m_pos;
 	}

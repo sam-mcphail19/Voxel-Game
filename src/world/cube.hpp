@@ -48,13 +48,24 @@ namespace voxel_game::world
 			static const std::map<BlockTypeId, BlockType> blockTypes = {
 				{BlockTypeId::NONE, BlockType(BlockTypeId::NONE, nullptr)},
 				{BlockTypeId::AIR, BlockType(BlockTypeId::AIR, nullptr)},
+				{BlockTypeId::WATER, BlockType(BlockTypeId::WATER, [](Block block) { return singleTextureCube(block, g::AtlasTexture::WATER); })},
 				{BlockTypeId::STONE, BlockType(BlockTypeId::STONE, [](Block block) { return singleTextureCube(block, g::AtlasTexture::STONE); })},
 				{BlockTypeId::DIRT, BlockType(BlockTypeId::DIRT, [](Block block) { return singleTextureCube(block, g::AtlasTexture::DIRT); })},
 				{BlockTypeId::GRASS, BlockType(BlockTypeId::GRASS, [](Block block) { return multiTextureCube(block, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS, g::AtlasTexture::DIRT); })},
-				{BlockTypeId::BEDROCK, BlockType(BlockTypeId::BEDROCK, [](Block block) { return singleTextureCube(block, g::AtlasTexture::BEDROCK); })} };
+				{BlockTypeId::BEDROCK, BlockType(BlockTypeId::BEDROCK, [](Block block) { return singleTextureCube(block, g::AtlasTexture::BEDROCK); })},
+				{BlockTypeId::SAND, BlockType(BlockTypeId::SAND, [](Block block) { return singleTextureCube(block, g::AtlasTexture::SAND); })},
+			};
 			return blockTypes.at(id);
 		}
 	};
 
-	inline bool isSolid(BlockTypeId blockType) { return blockType != BlockTypeId::NONE && blockType != BlockTypeId::AIR; }
+	inline bool isSolid(BlockTypeId blockType)
+	{
+		return blockType != BlockTypeId::NONE && blockType != BlockTypeId::AIR && blockType != BlockTypeId::WATER;
+	}
+
+	inline bool isTransparent(BlockTypeId blockType)
+	{
+		return blockType == BlockTypeId::NONE || blockType == BlockTypeId::AIR || blockType == BlockTypeId::WATER;
+	}
 }

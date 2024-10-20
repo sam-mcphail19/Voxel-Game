@@ -9,6 +9,7 @@
 #define ATLAS_PIXELS_PER_TEXTURE 256
 
 #define WORLD_HEIGHT 128
+#define WATER_HEIGHT 40
 constexpr float GRAVITY = 0.01f;
 #define CHUNK_RENDER_DISTANCE 4
 #define CHUNK_SIZE 16

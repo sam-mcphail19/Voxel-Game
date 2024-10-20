@@ -48,7 +48,20 @@ ivec3 getChunkOrigin(ivec3 blockPos) {
 }
 
 void main(void) {
-    v_color = vec4(0);
+    // water
+    if (i_blockType == 2) {
+        v_color = vec4(0, 0, 0, 0.7);
+    } else {
+        v_color = vec4(0, 0, 0, 1);
+    }
+
+    // TODO: Real lighting
+    if (i_normal == vec3(1, 0, 0) || i_normal == vec3(-1, 0, 0)) {
+        v_color = v_color - vec4(vec3(0.1), 0);
+    } else if (i_normal == vec3(0, 0, 1) || i_normal == vec3(0, 0, -1)) {
+        v_color = v_color - vec4(vec3(0.05), 0);
+    }
+
     v_position = i_position;
     v_normal = i_normal;
     v_texCoords = i_texCoords;
