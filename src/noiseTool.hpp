@@ -1,8 +1,10 @@
 #pragma once
 
 #include <iostream>
+#include <map>
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
+#include "world/block.hpp"
 #include "world/worldGenerator.hpp"
 #include "util/log.hpp"
 #include "vendor/lodepng.h"
@@ -13,6 +15,13 @@
 
 namespace voxel_game
 {
+	struct BlockPixel
+	{
+		unsigned char r;
+		unsigned char g;
+		unsigned char b;
+	};
+
 	class NoiseTool
 	{
 	private:
@@ -31,6 +40,7 @@ namespace voxel_game
 		NoiseTool();
 
 		void createNoiseTexture();
+		void createNoiseTextureGreyScale();
 		void draw();
 		bool shouldClose();
 	};
