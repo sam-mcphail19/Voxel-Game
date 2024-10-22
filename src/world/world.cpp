@@ -71,6 +71,7 @@ namespace voxel_game::world
 
 				if (m_breakBlockProgress >= 30)
 				{
+					log::info("Removing: " + blockLookingAt.block.pos);
 					removeBlock(blockLookingAt.block.pos);
 					m_breakBlockProgress = 0;
 				}
@@ -288,6 +289,7 @@ namespace voxel_game::world
 		//ChunkGenerator(*chunk, m_chunkManager).run();
 	}
 
+	// TODO: Can this all be done on another thread?
 	void World::generateChunk(BlockPos chunkCoord)
 	{
 		log::info("Generating chunk data for chunk at " + chunkCoord);

@@ -18,5 +18,5 @@ namespace voxel_game::graphics
 		void unbind();
 	};
 
-	Texture* loadTexture(const char *resourcePath);
+	Texture* loadTexture(const char *resourcePath, bool forceReload = false);
 }

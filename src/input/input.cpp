@@ -20,6 +20,10 @@ namespace voxel_game::input
 			{
 				keys[i] = KeyState::NONE;
 			}
+			if (keys[i] == KeyState::PRESSED)
+			{
+				keys[i] = KeyState::DOWN;
+			}
 		}
 	}
 

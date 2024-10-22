@@ -19,9 +19,9 @@ namespace voxel_game::graphics
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	Texture* loadTexture(const char *resourcePath)
+	Texture* loadTexture(const char *resourcePath, bool forceReload)
 	{
-		if (textureMap.find(resourcePath) != textureMap.end())
+		if (!forceReload && textureMap.find(resourcePath) != textureMap.end())
 		{
 			return textureMap[resourcePath];
 		}

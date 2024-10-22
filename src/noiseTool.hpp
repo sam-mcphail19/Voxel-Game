@@ -32,17 +32,19 @@ namespace voxel_game
 		graphics::Shader m_shader = graphics::Shader("ui.vs", "ui.fs");
 		graphics::Camera* m_camera = new graphics::Camera(glm::vec3(0, 0, 0), 0, 180);
 
+		physics::Transform* m_transform;
 		graphics::Quad* m_tex;
-
-		world::WorldGenerator m_worldGenerator = world::WorldGenerator(0L);
 
 	public:
 		NoiseTool();
+		void generate(long seed);
 
-		void createNoiseTexture();
-		void createNoiseTextureGreyScale();
 		void draw();
 		bool shouldClose();
+
+	private:
+		void createNoiseTexture(long seed);
+		void createNoiseTextureGreyScale(long seed);
 	};
 
 	inline constexpr unsigned char operator "" _uchar(unsigned long long arg) noexcept

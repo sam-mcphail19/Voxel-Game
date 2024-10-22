@@ -91,6 +91,9 @@ namespace voxel_game::graphics
 			std::cout << "OpenGL Error: " << error << std::endl;
 		}
 
+		glfwSwapBuffers(m_window);
+		glfwPollEvents();
+
 		if (input::isKeyPressed(GLFW_KEY_ESCAPE))
 		{
 			glfwSetWindowShouldClose(m_window, GL_TRUE);
@@ -100,9 +103,6 @@ namespace voxel_game::graphics
 		{
 			toggleWireframe();
 		}
-
-		glfwSwapBuffers(m_window);
-		glfwPollEvents();
 	}
 
 	bool Window::closed()

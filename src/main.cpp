@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <dbghelp.h>
 #include <iostream>
+#include <random>
 #include <sstream>
 #include <string>
 #include "noiseTool.hpp"
@@ -50,9 +51,24 @@ int main()
 
 #ifdef NOISE_TOOL
 	voxel_game::NoiseTool noiseTool;
+
+	std::random_device rd;
+	std::mt19937 engine(rd());
+
+	std::uniform_int_distribution<long> dist(std::numeric_limits<long>::min(), std::numeric_limits<long>::max());
+
+	noiseTool.generate(dist(engine));
 	while (!noiseTool.shouldClose())
 	{
 		noiseTool.draw();
+		if (voxel_game::input::isKeyPressed(GLFW_KEY_R))
+		{
+			long seed = dist(engine);
+			voxel_game::log::info("Regenerating with seed: " + std::to_string(seed));
+			noiseTool.generate(seed);
+		}
+
+		voxel_game::input::update();
 	}
 #else
 	voxel_game::VoxelGame voxelGame;

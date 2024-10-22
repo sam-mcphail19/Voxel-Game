@@ -13,20 +13,25 @@ namespace voxel_game
 	NoiseTool::NoiseTool()
 	{
 		m_window.setBackground(0.05, 0.05, 0.05);
-
-		physics::Transform* transform = new physics::Transform(
+		m_transform = new physics::Transform(
 			glm::vec3(-0.5, -0.5, 0),
 			glm::mat4(1),
 			glm::vec3(1, 1, 1)
 		);
-
-		createNoiseTexture();
-
-		m_tex = g::Quad::createQuad(transform, g::loadTexture(NOISE_TEX_PATH));
 	}
 
-	void NoiseTool::createNoiseTexture()
+	void NoiseTool::generate(long seed)
 	{
+		//createNoiseTextureGreyScale(seed);
+		createNoiseTexture(seed);
+
+		m_tex = g::Quad::createQuad(m_transform, g::loadTexture(NOISE_TEX_PATH, true));
+	}
+
+	void NoiseTool::createNoiseTexture(long seed)
+	{
+		world::WorldGenerator worldGenerator(seed);
+
 		std::vector<unsigned char> result(NOISE_TEX_SIZE * NOISE_TEX_SIZE * 4, 255);
 		world::BlockTypeId* blocks = new world::BlockTypeId[NOISE_TEX_SIZE * NOISE_TEX_SIZE];
 
@@ -36,9 +41,9 @@ namespace voxel_game
 		{
 			for (int y = 0; y < NOISE_TEX_SIZE; ++y)
 			{
-				int surfaceHeight = std::max(m_worldGenerator.getHeight(x, y), WATER_HEIGHT);
+				int surfaceHeight = std::max(worldGenerator.getHeight(x, y), WATER_HEIGHT);
 
-				world::BlockTypeId block = m_worldGenerator.getBlockType(world::BlockPos{ x, surfaceHeight, y });
+				world::BlockTypeId block = worldGenerator.getBlockType(world::BlockPos{ x, surfaceHeight, y });
 				BlockPixel blockColor = blockColors.at(block);
 
 				int resultIndex = (y * NOISE_TEX_SIZE + x) * 4;
@@ -56,8 +61,10 @@ namespace voxel_game
 		}
 	}
 
-	void NoiseTool::createNoiseTextureGreyScale()
+	void NoiseTool::createNoiseTextureGreyScale(long seed)
 	{
+		world::WorldGenerator worldGenerator(seed);
+
 		std::vector<unsigned char> result(NOISE_TEX_SIZE * NOISE_TEX_SIZE * 4, 255);
 		int* heights = new int[NOISE_TEX_SIZE * NOISE_TEX_SIZE];
 
@@ -69,7 +76,7 @@ namespace voxel_game
 		{
 			for (int y = 0; y < NOISE_TEX_SIZE; ++y)
 			{
-				int height = m_worldGenerator.getHeight(x, y);
+				int height = worldGenerator.getHeight(x, y);
 				maxHeight = std::max(height, maxHeight);
 
 				heights[y * NOISE_TEX_SIZE + x] = height;

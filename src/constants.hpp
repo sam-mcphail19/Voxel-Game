@@ -5,15 +5,17 @@
 
 #define TEXTURE_ATLAS_PATH "res/textureAtlas.png"
 #define ATLAS_TEXTURE_SIZE 16
-// 16 * 16
-#define ATLAS_PIXELS_PER_TEXTURE 256
+constexpr int ATLAS_PIXELS_PER_TEXTURE = ATLAS_TEXTURE_SIZE * ATLAS_TEXTURE_SIZE;
 
-#define WORLD_HEIGHT 128
-#define WATER_HEIGHT 40
+#define WORLD_HEIGHT 256
+#define WATER_HEIGHT 60
+// TODO: This is only for NoiseTool, real mountains prob shouldn't work this way
+// it should at least be varied
+#define MOUNTAIN_HEIGHT 100
 constexpr float GRAVITY = 0.01f;
 #define CHUNK_RENDER_DISTANCE 4
 #define CHUNK_SIZE 16
-#define CHUNK_HEIGHT 128
+#define CHUNK_HEIGHT 256
 constexpr int CHUNK_SIZE_TIMES_HEIGHT = CHUNK_SIZE * CHUNK_HEIGHT;
 #define CHUNK_BLOCK_COUNT CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT
 #define CHUNK_RENDER_DISTANCE_IN_BLOCKS CHUNK_RENDER_DISTANCE * CHUNK_SIZE
