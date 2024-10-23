@@ -34,33 +34,56 @@ namespace voxel_game::world
 	static const int erosionPointCount = 6;
 	static const int erosionCels = 8;
 
-	WorldGenerator::WorldGenerator(long seed) : m_noiseGenerator(NoiseGenerator(seed))
-	{
-		m_heightMapMutex = new std::mutex();
-	}
+	WorldGenerator::WorldGenerator(long seed) : m_noiseGenerator(NoiseGenerator(seed)) {}
 
 	void WorldGenerator::generateChunkData(Chunk& chunk)
 	{
 		const auto start = std::chrono::system_clock::now();
+
+		std::vector<std::vector<int>> heightMap(CHUNK_SIZE, std::vector<int>(CHUNK_SIZE));
+		for (int i = 0; i < CHUNK_SIZE; i++) {
+			for (int j = 0; j < CHUNK_SIZE; j++) {
+				heightMap[i][j] = -1;
+			}
+		}
+
 		BlockPos origin = chunk.getOrigin();
+
 		for (int i = 0; i < CHUNK_BLOCK_COUNT; i++)
 		{
 			BlockPos pos = to3dIndex(i);
-			chunk.putBlock(Block{ pos, getBlockType(origin + pos) });
+			chunk.putBlock(Block{ pos, getBlockType(origin + pos, heightMap) });
 		}
+
 		const auto end = std::chrono::system_clock::now();
 		int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 		log::info("Generating chunk data took " + std::to_string(durationMs) + "ms");
 	}
 
+	BlockTypeId WorldGenerator::getBlockType(BlockPos pos, std::vector<std::vector<int>>& heightMap)
+	{
+		return getBlockType(pos, [this, &pos, &heightMap]() {
+			return getHeight(pos.x, pos.z, heightMap);
+			}
+		);
+	}
+
 	BlockTypeId WorldGenerator::getBlockType(BlockPos pos)
+	{
+		return getBlockType(pos, [this, &pos]() {
+			return getHeight(pos.x, pos.z);
+			}
+		);
+	}
+
+	BlockTypeId WorldGenerator::getBlockType(BlockPos pos, std::function<int()> getHeightFunc)
 	{
 		if (pos.y < 4)
 		{
 			return BlockTypeId::BEDROCK;
 		}
 
-		int height = getHeight(pos.x, pos.z);
+		int height = getHeightFunc();
 
 		if (pos.y > height)
 		{
@@ -100,24 +123,38 @@ namespace voxel_game::world
 		return BlockTypeId::STONE;
 	}
 
-	int WorldGenerator::getHeight(int x, int z)
+	int WorldGenerator::getHeight(int x, int z, std::vector<std::vector<int>>& heightMap)
 	{
-		int key = getHeightMapHash(x, z);
-		std::unique_lock<std::mutex> lock(*m_heightMapMutex);
+		// TODO: this is prob way less efficient than just passing the chunk's origin
+		int localX = x;
+		int localZ = z;
 
-		if (m_heightMap.find(key) != m_heightMap.end())
+		while (localX < 0)
+			localX += CHUNK_SIZE;
+		while (localZ < 0)
+			localZ += CHUNK_SIZE;
+
+		localX %= CHUNK_SIZE;
+		localZ %= CHUNK_SIZE;
+
+		int cachedVal = heightMap[localX][localZ];
+		if (cachedVal != -1)
 		{
-			return m_heightMap[key];
+			return cachedVal;
 		}
 
+		heightMap[localX][localZ] = getHeight(x, z);
+		return heightMap[localX][localZ];
+	}
+
+	int WorldGenerator::getHeight(int x, int z)
+	{
 		float noise = getContinentalness(x, z) + getPeaksAndValleys(x, z) * getErosion(x, z);
 		//float noise = getContinentalness(x, z);
 		//float noise = 100 - getErosion(x, z) * 100;
 		//float noise = (getPeaksAndValleys(x, z) + 60) * 100;
 
-		int height = (int)noise;
-		m_heightMap[key] = height;
-		return height;
+		return (int)noise;
 	}
 
 	float WorldGenerator::getContinentalness(int x, int z)
@@ -136,10 +173,5 @@ namespace voxel_game::world
 	{
 		float noise = m_noiseGenerator.noise2(x, z, 0.01f, 2.f, 0.5f, 6);
 		return utils::evaluate(erosionPoints, erosionPointCount, noise);
-	}
-
-	int WorldGenerator::getHeightMapHash(int x, int z)
-	{
-		return CHUNK_BLOCK_COUNT * x + z;
 	}
 }

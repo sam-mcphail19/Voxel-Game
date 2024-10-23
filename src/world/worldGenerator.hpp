@@ -1,6 +1,6 @@
 #pragma once
-#pragma once
 
+#include <functional>
 #include <mutex>
 #include <unordered_map>
 #include "chunk.hpp"
@@ -14,14 +14,14 @@ namespace voxel_game::world
 	{
 	private:
 		NoiseGenerator m_noiseGenerator;
-		std::unordered_map<int, int> m_heightMap;
-		std::mutex* m_heightMapMutex;
+
+		BlockTypeId getBlockType(BlockPos pos, std::vector<std::vector<int>>& heightMap);
+		BlockTypeId getBlockType(BlockPos pos, std::function<int()> getHeightFunc);
+		int getHeight(int x, int z, std::vector<std::vector<int>>& heightMap);
 
 		float getContinentalness(int x, int z);
 		float getPeaksAndValleys(int x, int z);
 		float getErosion(int x, int z);
-
-		int getHeightMapHash(int x, int z);
 
 	public:
 		WorldGenerator(long seed);

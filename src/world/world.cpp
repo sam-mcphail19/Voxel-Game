@@ -15,13 +15,15 @@ namespace voxel_game::world
 
 	void World::generate()
 	{
+		const auto start = std::chrono::system_clock::now();
+
 		for (int x = -CHUNK_RENDER_DISTANCE - 1; x < CHUNK_RENDER_DISTANCE + 1; x++)
 		{
 			for (int z = -CHUNK_RENDER_DISTANCE - 1; z < CHUNK_RENDER_DISTANCE + 1; z++)
 			{
 				for (int y = 0; y < WORLD_HEIGHT / CHUNK_HEIGHT; y++)
 				{
-					generateChunk({ x, y, z });
+					generateChunkAsync({ x, y, z });
 				}
 			}
 		}
@@ -30,28 +32,15 @@ namespace voxel_game::world
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
+
+		const auto end = std::chrono::system_clock::now();
+		int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		log::info("World generation took " + std::to_string(durationMs) + "ms");
 	}
 
 	void World::update()
 	{
 		PlayerControl input = m_player.getInput();
-
-		BlockPos currentChunkCoord = getChunkCoord(toBlockPos(m_player.getPos()));
-		int yStart = utils::max(currentChunkCoord.y - CHUNK_RENDER_DISTANCE, 0);
-		int yEnd = utils::min(currentChunkCoord.y + CHUNK_RENDER_DISTANCE, WORLD_HEIGHT);
-
-		for (int x = -CHUNK_RENDER_DISTANCE; x < CHUNK_RENDER_DISTANCE; x++)
-		{
-			for (int z = -CHUNK_RENDER_DISTANCE; z < CHUNK_RENDER_DISTANCE; z++)
-			{
-				BlockPos pos = currentChunkCoord + BlockPos{ x, -currentChunkCoord.y, z };
-				if (!m_chunkManager.containsChunk(pos))
-				{
-					// TODO: Sort this by closest to player -> furthest to player
-					generateChunk(pos);
-				}
-			}
-		}
 
 		RaycastResult blockLookingAt = getBlockLookingAt();
 		if (blockLookingAt.block != NULL_BLOCK)
@@ -110,6 +99,13 @@ namespace voxel_game::world
 		}
 
 		m_player.setPos(m_player.getPos() + input.movement);
+
+		std::vector<BlockPos> chunksToGenerate = getChunksToGenerate();
+
+		for (BlockPos pos : chunksToGenerate)
+		{
+			generateChunkAsync(pos);
+		}
 	}
 
 	std::vector<Chunk*> World::getVisibleChunks()
@@ -149,21 +145,21 @@ namespace voxel_game::world
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
-		if (chunk == NULL)
+		if (chunk == nullptr)
 		{
 			return;
 		}
 
 		BlockPos localBlockPos = worldPosToLocalPos(blockPos);
 		chunk->putBlock(Block{ localBlockPos, BlockTypeId::AIR });
-		updateChunkMesh(chunk);
+		updateChunkMeshAsync(chunk);
 
 		if (localBlockPos.x == 0)
 		{
 			chunk = m_chunkManager.getChunk(chunkCoord - BlockPos{ 1, 0, 0 });
 			if (chunk)
 			{
-				updateChunkMesh(chunk);
+				updateChunkMeshAsync(chunk);
 			}
 		}
 		else if (localBlockPos.x == CHUNK_SIZE - 1)
@@ -171,7 +167,7 @@ namespace voxel_game::world
 			chunk = m_chunkManager.getChunk(chunkCoord + BlockPos{ 1, 0, 0 });
 			if (chunk)
 			{
-				updateChunkMesh(chunk);
+				updateChunkMeshAsync(chunk);
 			}
 		}
 
@@ -180,7 +176,7 @@ namespace voxel_game::world
 			chunk = m_chunkManager.getChunk(chunkCoord - BlockPos{ 0, 0, 1 });
 			if (chunk)
 			{
-				updateChunkMesh(chunk);
+				updateChunkMeshAsync(chunk);
 			}
 		}
 		else if (localBlockPos.z == CHUNK_SIZE - 1)
@@ -188,7 +184,7 @@ namespace voxel_game::world
 			chunk = m_chunkManager.getChunk(chunkCoord + BlockPos{ 0, 0, 1 });
 			if (chunk)
 			{
-				updateChunkMesh(chunk);
+				updateChunkMeshAsync(chunk);
 			}
 		}
 	}
@@ -197,14 +193,14 @@ namespace voxel_game::world
 	{
 		BlockPos chunkCoord = getChunkCoord(block.pos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
-		if (chunk == NULL)
+		if (chunk == nullptr)
 		{
 			return;
 		}
 
 		BlockPos localBlockPos = worldPosToLocalPos(block.pos);
 		chunk->putBlock(Block{ localBlockPos, block.type });
-		updateChunkMesh(chunk);
+		updateChunkMeshAsync(chunk);
 	}
 
 	bool World::canPlaceBlock(const Block& block)
@@ -281,12 +277,26 @@ namespace voxel_game::world
 
 	void World::updateChunkMesh(Chunk* chunk)
 	{
-		const std::function<void()>& job = [generator = ChunkGenerator(*chunk, m_chunkManager)]() mutable
+		const auto start = std::chrono::system_clock::now();
+		log::info("Generating chunk mesh for chunk at " + chunk->getChunkCoord());
+
+		chunk->updateMesh(m_chunkManager);
+
+		const auto end = std::chrono::system_clock::now();
+		int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		log::info("Finished updating mesh for chunk at " + chunk->getChunkCoord() + 
+			". Total vertices: " + std::to_string(chunk->getMesh()->getVertexCount()) +
+			". Duration:" + std::to_string(durationMs) + "ms"
+		);
+	}
+
+	void World::updateChunkMeshAsync(Chunk* chunk)
+	{
+		const std::function<void()>& job = [&, chunk]()
 			{
-				generator.run();
+				updateChunkMesh(chunk);
 			};
 		m_threadPool.queueJob(job);
-		//ChunkGenerator(*chunk, m_chunkManager).run();
 	}
 
 	// TODO: Can this all be done on another thread?
@@ -304,16 +314,59 @@ namespace voxel_game::world
 		updateChunkMesh(chunk);
 	}
 
-	bool World::allChunksGenerated()
+	void World::generateChunkAsync(BlockPos chunkCoord)
 	{
-		for (Chunk* chunk : m_chunkManager.getChunks())
 		{
-			if (chunk->getMesh() == NULL)
+			std::unique_lock<std::mutex> lock(m_generatingChunksMutex);
+			m_generatingChunks.insert(chunkCoord);
+		}
+
+		const std::function<void()>& job = [&, chunkCoord]()
 			{
-				return false;
+				generateChunk(chunkCoord);
+
+				std::unique_lock<std::mutex> lock(m_generatingChunksMutex);
+				if (m_generatingChunks.contains(chunkCoord))
+				{
+					m_generatingChunks.erase(chunkCoord);
+				}
+			};
+		m_threadPool.queueJob(job);
+	}
+
+	std::vector<BlockPos> World::getChunksToGenerate()
+	{
+		BlockPos currentChunkCoord = getChunkCoord(toBlockPos(m_player.getPos()));
+		int yStart = utils::max(currentChunkCoord.y - CHUNK_RENDER_DISTANCE, 0);
+		int yEnd = utils::min(currentChunkCoord.y + CHUNK_RENDER_DISTANCE, WORLD_HEIGHT);
+
+
+		std::vector<BlockPos> result;
+
+		// TODO: Should go from closest to player -> furthest to player
+		for (int x = -CHUNK_RENDER_DISTANCE; x < CHUNK_RENDER_DISTANCE; x++)
+		{
+			for (int z = -CHUNK_RENDER_DISTANCE; z < CHUNK_RENDER_DISTANCE; z++)
+			{
+				BlockPos pos = currentChunkCoord + BlockPos{ x, -currentChunkCoord.y, z };
+				if (!m_chunkManager.containsChunk(pos))
+				{
+					std::unique_lock<std::mutex> lock(m_generatingChunksMutex);
+					if (!m_generatingChunks.contains(pos))
+					{
+						result.push_back(pos);
+					}
+				}
 			}
 		}
-		return true;
+
+		return result;
+	}
+
+	bool World::allChunksGenerated()
+	{
+		std::unique_lock<std::mutex> lock(m_generatingChunksMutex);
+		return m_generatingChunks.empty();
 	}
 
 	bool World::chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player)

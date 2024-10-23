@@ -29,6 +29,8 @@ namespace voxel_game::world
 		ChunkManager m_chunkManager;
 		WorldGenerator m_worldGenerator;
 		utils::ThreadPool m_threadPool;
+		std::set<BlockPos> m_generatingChunks;
+		std::mutex m_generatingChunksMutex;
 		g::Shader* m_shader;
 
 		Player m_player;
@@ -46,8 +48,11 @@ namespace voxel_game::world
 		RaycastResult raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock);
 
 		void updateChunkMesh(Chunk* chunk);
+		void updateChunkMeshAsync(Chunk* chunk);
 		void generateChunk(BlockPos chunkCoord);
+		void generateChunkAsync(BlockPos chunkCoord);
 
+		std::vector<BlockPos> getChunksToGenerate();
 		bool allChunksGenerated();
 
 		bool chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player);
@@ -59,28 +64,6 @@ namespace voxel_game::world
 		void update();
 		std::vector<Chunk *> getVisibleChunks();
 		BlockTypeId getBlock(const BlockPos& blockPos);
-	};
-
-	class ChunkGenerator
-	{
-	public:
-		ChunkGenerator(Chunk &chunk, ChunkManager &chunkManager) : m_chunk(chunk), m_chunkManager(chunkManager) {}
-
-		void run()
-		{
-			const auto start = std::chrono::system_clock::now();
-			log::info("Generating chunk mesh for chunk at " + m_chunk.getChunkCoord());
-
-			m_chunk.updateMesh(m_chunkManager);
-
-			const auto end = std::chrono::system_clock::now();
-			int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-			log::info("Finished updating mesh for chunk at " + m_chunk.getChunkCoord() + ". Total vertices: " + std::to_string(m_chunk.getMesh()->getVertexCount()) + ". Duration:" + std::to_string(durationMs) + "ms");
-		}
-
-	private:
-		Chunk &m_chunk;
-		ChunkManager &m_chunkManager;
 	};
 
 	BlockPos worldPosToLocalPos(const BlockPos& worldPos);
