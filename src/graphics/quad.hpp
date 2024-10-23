@@ -29,7 +29,7 @@ namespace voxel_game::graphics
 		physics::Transform* m_transform;
 		Texture* m_texture;
 
-		Mesh* m_mesh = NULL;
+		Mesh* m_mesh = nullptr;
 
 		Quad(std::vector<Vertex>* vertices, physics::Transform* transform, Texture* texture);
 		static std::vector<Vertex>* createVertices();

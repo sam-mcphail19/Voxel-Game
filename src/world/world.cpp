@@ -113,7 +113,7 @@ namespace voxel_game::world
 		std::vector<Chunk*> visibleChunks;
 		for (Chunk* chunk : m_chunkManager.getChunks())
 		{
-			if (chunk->getMesh() != NULL && m_player.chunkIsVisible(chunk))
+			if (chunk->getMesh() != nullptr && m_player.chunkIsVisible(chunk))
 			{
 				visibleChunks.push_back(chunk);
 			}
@@ -132,7 +132,7 @@ namespace voxel_game::world
 	{
 		BlockPos chunkCoord = getChunkCoord(blockPos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
-		if (chunk == NULL)
+		if (chunk == nullptr)
 		{
 			return m_worldGenerator.getBlockType(blockPos);
 		}

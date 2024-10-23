@@ -40,7 +40,7 @@ namespace voxel_game::graphics
 
 	bool Shader::compileShader(const char *source, GLuint &shader)
 	{
-		glShaderSource(shader, 1, &source, NULL);
+		glShaderSource(shader, 1, &source, nullptr);
 		glCompileShader(shader);
 
 		GLint compiled;

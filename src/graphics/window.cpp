@@ -51,7 +51,7 @@ namespace voxel_game::graphics
 			return false;
 		}
 
-		m_window = glfwCreateWindow(m_width, m_height, m_name.c_str(), NULL, NULL);
+		m_window = glfwCreateWindow(m_width, m_height, m_name.c_str(), nullptr, nullptr);
 
 		if (!m_window)
 		{

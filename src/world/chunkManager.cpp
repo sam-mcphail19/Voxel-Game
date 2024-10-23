@@ -15,7 +15,7 @@ namespace voxel_game::world
 		std::lock_guard<std::mutex> lock(m_lock);
 		if (m_chunks.find(chunkCoord) == m_chunks.end())
 		{
-			return NULL;
+			return nullptr;
 		}
 
 		return m_chunks.at(chunkCoord);

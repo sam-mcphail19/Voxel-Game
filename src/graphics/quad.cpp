@@ -140,7 +140,7 @@ namespace voxel_game::graphics
 
 	Quad* Quad::createBlockQuad(world::Block block, Direction direction, AtlasTexture texture)
 	{
-		return new Quad(createBlockQuadVertices(block, direction, texture), NULL, loadTextureAtlas());
+		return new Quad(createBlockQuadVertices(block, direction, texture), nullptr, loadTextureAtlas());
 	}
 
 	std::vector<Vertex>* Quad::createVertices()

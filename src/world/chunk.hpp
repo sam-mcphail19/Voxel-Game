@@ -25,8 +25,8 @@ namespace voxel_game::world
 		BlockPos m_origin;
 		World* m_world;
 		BlockTypeId* m_blocks;
-		graphics::Mesh* m_mesh = NULL;
-		graphics::Mesh* m_transparentMesh = NULL;
+		graphics::Mesh* m_mesh = nullptr;
+		graphics::Mesh* m_transparentMesh = nullptr;
 		std::mutex m_mutex;
 
 		bool isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager);

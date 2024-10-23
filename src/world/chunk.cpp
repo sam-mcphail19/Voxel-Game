@@ -69,8 +69,8 @@ namespace voxel_game::world
 			}
 		}
 
-		g::Mesh* newMesh = new graphics::Mesh(vertices, indices, NULL, g::loadTextureAtlas());
-		g::Mesh* newTransparentMesh = new graphics::Mesh(transparentVertices, transparentIndices, NULL, g::loadTextureAtlas());
+		g::Mesh* newMesh = new graphics::Mesh(vertices, indices, nullptr, g::loadTextureAtlas());
+		g::Mesh* newTransparentMesh = new graphics::Mesh(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
 
 		std::unique_lock<std::mutex> lock = acquireLock();
 
@@ -78,9 +78,9 @@ namespace voxel_game::world
 		std::swap(m_transparentMesh, newTransparentMesh);
 
 		delete newMesh;
-		newMesh = NULL;
+		newMesh = nullptr;
 		delete newTransparentMesh;
-		newTransparentMesh = NULL;
+		newTransparentMesh = nullptr;
 	}
 
 	void Chunk::addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
@@ -183,7 +183,7 @@ namespace voxel_game::world
 		{
 			Chunk* neighbourChunk = getNeighbourChunk(face.dir, chunkManager);
 
-			if (neighbourChunk == NULL)
+			if (neighbourChunk == nullptr)
 			{
 				neighbour = m_world->getBlock(m_origin + neighbourPos);
 			}

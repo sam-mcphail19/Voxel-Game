@@ -12,10 +12,10 @@
 
 void printStackTrace() {
 	HANDLE process = GetCurrentProcess();
-	SymInitialize(process, NULL, TRUE);
+	SymInitialize(process, nullptr, TRUE);
 
 	void* stack[100];
-	unsigned short frames = CaptureStackBackTrace(0, 100, stack, NULL);
+	unsigned short frames = CaptureStackBackTrace(0, 100, stack, nullptr);
 
 	SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char));
 	symbol->MaxNameLen = 255;
