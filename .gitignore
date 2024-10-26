@@ -12,3 +12,5 @@ Voxel-Game.vcxproj.user
 
 get_sources.sh
 noise_tool/texture.png
+
+imgui.ini
