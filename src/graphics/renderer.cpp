@@ -6,7 +6,7 @@ namespace voxel_game::graphics
 	static const glm::mat4 orthoProjMat = glm::ortho(-1, 1, -1, 1, -1, 1);
 	static const glm::mat4 orthViewMat = glm::mat4(1.f);
 
-	Renderer::Renderer() {}
+	Renderer::Renderer(const Window& window) : m_uiRenderer(UiRenderer(window)) {}
 
 	void Renderer::renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera)
 	{
@@ -44,6 +44,14 @@ namespace voxel_game::graphics
 			shader->setUniformMat4(MODEL_UNIFORM, mesh->getTransform()->modelMat());
 
 			mesh->render();
+		}
+	}
+
+	void Renderer::renderUi(bool isDebugEnabled)
+	{
+		if (isDebugEnabled)
+		{
+			m_uiRenderer.renderDebugInfo();
 		}
 	}
 

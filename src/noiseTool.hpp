@@ -27,8 +27,8 @@ namespace voxel_game
 	private:
 		const std::string m_title = "Voxel Game - Noise Tool";
 
-		graphics::Renderer m_renderer = graphics::Renderer();
 		graphics::Window m_window = graphics::Window(m_title, NOISE_TEX_SIZE, NOISE_TEX_SIZE);
+		graphics::Renderer m_renderer = graphics::Renderer(m_window);
 		graphics::Shader m_shader = graphics::Shader("ui.vs", "ui.fs");
 		graphics::Camera* m_camera = new graphics::Camera(glm::vec3(0, 0, 0), 0, 180);
 

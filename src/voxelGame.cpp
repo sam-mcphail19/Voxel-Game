@@ -45,6 +45,11 @@ namespace voxel_game
 			m_ticks++;
 		}
 
+		if (input::isKeyPressed(GLFW_KEY_F3))
+		{
+			m_isDebugEnabled = !m_isDebugEnabled;
+		}
+
 		draw();
 
 		const auto endTime = std::chrono::steady_clock::now();
@@ -87,6 +92,8 @@ namespace voxel_game
 		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair->getMesh()};
 
 		m_renderer.renderOrtho(orthoMeshes, &m_uiShader, m_player->getCamera());
+
+		m_renderer.renderUi(m_isDebugEnabled);
 	}
 
 	bool VoxelGame::shouldClose()
