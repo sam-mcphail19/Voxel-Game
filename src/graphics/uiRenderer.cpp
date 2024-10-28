@@ -19,15 +19,18 @@ namespace voxel_game::graphics
 		io.Fonts->Build();
 	}
 
-	void UiRenderer::renderDebugInfo()
+	void UiRenderer::renderDebugInfo(world::DebugInfo debugInfo)
 	{
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 
 		ImGui::NewFrame();
 		{
-			ImGui::Begin("My First Tool");
-			ImGui::Text("Hello, world %d", 123);
+			ImGui::Begin("Debug");
+			ImGui::Text("Player position: (%d, %d, %d)", debugInfo.x, debugInfo.y, debugInfo.z);
+			ImGui::Text("C: %f", debugInfo.m_c);
+			ImGui::Text("E: %f", debugInfo.m_e);
+			ImGui::Text("PV: %f", debugInfo.m_pv);
 			ImGui::End();
 		}
 

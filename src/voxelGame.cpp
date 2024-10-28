@@ -79,7 +79,7 @@ namespace voxel_game
 
 	void VoxelGame::updateGame()
 	{
-		m_world->update();
+		m_debugInfo = m_world->update();
 	}
 
 	void VoxelGame::draw()
@@ -93,7 +93,7 @@ namespace voxel_game
 
 		m_renderer.renderOrtho(orthoMeshes, &m_uiShader, m_player->getCamera());
 
-		m_renderer.renderUi(m_isDebugEnabled);
+		m_renderer.renderUi(m_isDebugEnabled, m_debugInfo);
 	}
 
 	bool VoxelGame::shouldClose()

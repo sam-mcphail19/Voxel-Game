@@ -23,6 +23,7 @@ namespace voxel_game
 	{
 	private:
 		const std::string m_title = "Voxel Game";
+		world::DebugInfo m_debugInfo = {};
 		bool m_isDebugEnabled = true;
 
 		graphics::Window m_window = graphics::Window(m_title, 1280, 720);
@@ -36,9 +37,9 @@ namespace voxel_game
 		int m_minFps = INT_MAX;
 		int m_ticks = 0;
 
-		Player *m_player;
-		world::World *m_world;
-		graphics::Quad *m_crosshair;
+		Player* m_player;
+		world::World* m_world;
+		graphics::Quad* m_crosshair;
 
 	public:
 		VoxelGame();

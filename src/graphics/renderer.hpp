@@ -9,6 +9,7 @@
 #include "uiRenderer.hpp"
 #include "window.hpp"
 #include "../world/chunk.hpp"
+#include "../world/world.hpp"
 #include "../util/log.hpp"
 #include "../util/timeUtils.hpp"
 
@@ -24,7 +25,7 @@ namespace voxel_game::graphics
 		void renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
 		void renderChunks(std::vector<world::Chunk*> chunks, Shader *shader, Camera *camera);
 		void renderOrtho(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
-		void renderUi(bool isDebugEnabled);
+		void renderUi(bool isDebugEnabled, world::DebugInfo debugInfo);
 
 	private:
 		UiRenderer m_uiRenderer;

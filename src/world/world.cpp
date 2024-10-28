@@ -38,7 +38,7 @@ namespace voxel_game::world
 		log::info("World generation took " + std::to_string(durationMs) + "ms");
 	}
 
-	void World::update()
+	DebugInfo World::update()
 	{
 		PlayerControl input = m_player.getInput();
 
@@ -106,6 +106,16 @@ namespace voxel_game::world
 		{
 			generateChunkAsync(pos);
 		}
+
+		BlockPos playerPos = toBlockPos(m_player.getPos());
+		return DebugInfo{
+			playerPos.x,
+			playerPos.y,
+			playerPos.z,
+			m_worldGenerator.getContinentalness(playerPos.x, playerPos.z),
+			m_worldGenerator.getErosion(playerPos.x, playerPos.z),
+			m_worldGenerator.getPeaksAndValleys(playerPos.x, playerPos.z)
+		};
 	}
 
 	std::vector<Chunk*> World::getVisibleChunks()

@@ -47,11 +47,11 @@ namespace voxel_game::graphics
 		}
 	}
 
-	void Renderer::renderUi(bool isDebugEnabled)
+	void Renderer::renderUi(bool isDebugEnabled, world::DebugInfo debugInfo)
 	{
 		if (isDebugEnabled)
 		{
-			m_uiRenderer.renderDebugInfo();
+			m_uiRenderer.renderDebugInfo(debugInfo);
 		}
 	}
 

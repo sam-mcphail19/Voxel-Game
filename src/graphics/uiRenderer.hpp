@@ -4,6 +4,7 @@
 #include "../vendor/imgui/imgui_impl_glfw.h"
 #include "../vendor/imgui/imgui_impl_opengl3.h"
 #include "window.hpp"
+#include "../world/world.hpp"
 
 namespace voxel_game::graphics
 {
@@ -12,6 +13,6 @@ namespace voxel_game::graphics
 	public:
 		UiRenderer(const Window& window);
 
-		void renderDebugInfo();
+		void renderDebugInfo(world::DebugInfo debugInfo);
 	};
 }

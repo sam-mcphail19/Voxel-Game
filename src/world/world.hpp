@@ -17,6 +17,12 @@
 
 namespace voxel_game::world
 {
+	struct DebugInfo
+	{
+		int x, y, z;
+		float m_c, m_e, m_pv;
+	};
+
 	struct RaycastResult
 	{
 		Block block;
@@ -61,7 +67,7 @@ namespace voxel_game::world
 		World(WorldGenerator &worldGenerator, g::Shader* shader, Player &player);
 		~World();
 		void generate();
-		void update();
+		DebugInfo update();
 		std::vector<Chunk *> getVisibleChunks();
 		BlockTypeId getBlock(const BlockPos& blockPos);
 	};
