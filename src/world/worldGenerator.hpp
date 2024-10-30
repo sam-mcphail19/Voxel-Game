@@ -26,6 +26,7 @@ namespace voxel_game::world
 		int getHeight(int x, int z);
 		void generateChunkData(Chunk& chunk);
 
+		float getNoise(int x, int z);
 		float getContinentalness(int x, int z);
 		float getPeaksAndValleys(int x, int z);
 		float getErosion(int x, int z);

@@ -37,7 +37,7 @@ int floorDiv(int a, int b) {
 ivec3 getChunkOrigin(ivec3 blockPos) {
     // TODO: Pass these as uniforms (at start up, not every frame, because they dont change)
     int x = floorDiv(blockPos.x, 16);
-	int y = floorDiv(blockPos.y, 128);
+	int y = floorDiv(blockPos.y, 256);
 	int z = floorDiv(blockPos.z, 16);
 
 	if (y < 0) {

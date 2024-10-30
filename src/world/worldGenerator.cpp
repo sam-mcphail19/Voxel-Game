@@ -3,36 +3,50 @@
 namespace voxel_game::world
 {
 	static const glm::vec2 continentalnessPoints[] = {
-		glm::vec2(0.0f, 80.0f),
-		glm::vec2(0.05f, 40.0f),
-		glm::vec2(0.4f, 60.0f),
-		glm::vec2(0.5f, 75.0f),
-		glm::vec2(0.65f, 90.0f),
-		glm::vec2(0.8f, 110.0f),
-		glm::vec2(1.0f, 120.0f),
+		glm::vec2(0.00f, 0.04f),
+		glm::vec2(0.15f, 0.07f),
+		glm::vec2(0.44f, 0.09f),
+		glm::vec2(0.50f, 0.21f),
+		glm::vec2(0.59f, 0.26f),
+		glm::vec2(0.71f, 0.44f),
+		glm::vec2(0.74f, 0.54f),
+		glm::vec2(0.77f, 0.65f),
+		glm::vec2(0.81f, 0.67f),
+		glm::vec2(0.88f, 0.68f),
+		glm::vec2(1.00f, 0.71f),
 	};
 
 	static const glm::vec2 peaksAndValleysPoints[] = {
-		glm::vec2(0.0f, -30.0f),
-		glm::vec2(0.25f, -10.f),
-		glm::vec2(0.5f, 0.0f),
-		glm::vec2(0.7f, 50.0f),
-		glm::vec2(1.f, 85.f),
+		glm::vec2(0.00f, 0.09f),
+		glm::vec2(0.06f, 0.10f),
+		glm::vec2(0.07f, 0.12f),
+		glm::vec2(0.10f, 0.17f),
+		glm::vec2(0.21f, 0.19f),
+		glm::vec2(0.45f, 0.26f),
+		glm::vec2(0.52f, 0.31f),
+		glm::vec2(0.62f, 0.38f),
+		glm::vec2(0.70f, 0.54f),
+		glm::vec2(0.77f, 0.67f),
+		glm::vec2(0.89f, 0.78f),
+		glm::vec2(1.00f, 0.85f),
 	};
 
 	static const glm::vec2 erosionPoints[] = {
-		glm::vec2(0.0f, 1.0f),
-		glm::vec2(0.4f, 0.8f),
-		glm::vec2(0.5f, 0.7f),
-		glm::vec2(0.7f, 0.5f),
-		glm::vec2(0.85f, 0.2f),
-		glm::vec2(1.f, 0.1f),
+		glm::vec2(0.00f, 0.10f),
+		glm::vec2(0.10f, 0.10f),
+		glm::vec2(0.20f, 0.13f),
+		glm::vec2(0.35f, 0.24f),
+		glm::vec2(0.60f, 0.44f),
+		glm::vec2(0.80f, 0.60f),
+		glm::vec2(1.00f, 0.90f),
 	};
 
-	static const int continentalnessPointCount = 7;
-	static const int peaksAndValleysPointCount = 5;
-	static const int erosionPointCount = 6;
-	static const int erosionCels = 8;
+	static const int continentalnessPointCount = 11;
+	static const int peaksAndValleysPointCount = 12;
+	static const int erosionPointCount = 7;
+
+	static const float continentalnessPower = 0.95f;
+	static const float peaksAndValleysPower = 1.2f;
 
 	WorldGenerator::WorldGenerator(long seed) : m_noiseGenerator(NoiseGenerator(seed)) {}
 
@@ -78,6 +92,8 @@ namespace voxel_game::world
 
 	BlockTypeId WorldGenerator::getBlockType(BlockPos pos, std::function<int()> getHeightFunc)
 	{
+		// using getHeight() height, apply squishing as in https://www.reddit.com/r/VoxelGameDev/comments/zedp39/how_does_minecraft_use_2d_and_3d_noise_to/
+
 		if (pos.y < 4)
 		{
 			return BlockTypeId::BEDROCK;
@@ -92,11 +108,6 @@ namespace voxel_game::world
 				return BlockTypeId::AIR;
 			}
 			return BlockTypeId::WATER;
-		}
-
-		if (pos.y > MOUNTAIN_HEIGHT)
-		{
-			return BlockTypeId::STONE;
 		}
 
 		if (pos.y == height)
@@ -149,29 +160,42 @@ namespace voxel_game::world
 
 	int WorldGenerator::getHeight(int x, int z)
 	{
-		float noise = getContinentalness(x, z) + getPeaksAndValleys(x, z) * getErosion(x, z);
-		//float noise = getContinentalness(x, z);
-		//float noise = 100 - getErosion(x, z) * 100;
-		//float noise = (getPeaksAndValleys(x, z) + 60) * 100;
-
-		return (int)noise;
+		return utils::lerp(MIN_WORLD_GEN_HEIGHT, MAX_WORLD_GEN_HEIGHT, getNoise(x, z));
 	}
 
+	float WorldGenerator::getNoise(int x, int z)
+	{
+		float c = getContinentalness(x, z);
+		float pv = getPeaksAndValleys(x, z);
+		float e = getErosion(x, z);
+
+		// At higher erosion, bias towards the c value. At lower erosion, bias towards pv
+		return utils::lerp(pv, c, e);
+	}
+
+	// TODO: use different evaluate functions based on biome
 	float WorldGenerator::getContinentalness(int x, int z)
 	{
-		float noise = m_noiseGenerator.noise2(x, z, 0.03f, 2.f, 0.5f, 8);
+		float noise = m_noiseGenerator.noise2(x, z, 0.055f, 2.f, 0.7f, 7);
+		noise = powf(noise, continentalnessPower);
+
 		return utils::evaluate(continentalnessPoints, continentalnessPointCount, noise);
 	}
 
 	float WorldGenerator::getPeaksAndValleys(int x, int z)
 	{
-		float noise = fabs(m_noiseGenerator.noise2(x, z, 0.035f, 2.f, 0.5f, 6) * 2 - 1);
+		float noise = m_noiseGenerator.noise2(x, z, 0.06f, 2.f, 0.4f, 6);
+
+		noise = powf(noise, peaksAndValleysPower);
+		noise = fabs(noise * 2.f - 1);
+
 		return utils::evaluate(peaksAndValleysPoints, peaksAndValleysPointCount, noise);
 	}
 
 	float WorldGenerator::getErosion(int x, int z)
 	{
-		float noise = m_noiseGenerator.noise2(x, z, 0.01f, 2.f, 0.5f, 6);
+		float noise = m_noiseGenerator.noise2(x, z, 0.03f, 2.0f, 0.35f, 6);
+
 		return utils::evaluate(erosionPoints, erosionPointCount, noise);
 	}
 }

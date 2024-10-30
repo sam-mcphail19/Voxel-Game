@@ -44,6 +44,7 @@ namespace voxel_game
 				int surfaceHeight = std::max(worldGenerator.getHeight(x, y), WATER_HEIGHT);
 
 				world::BlockTypeId block = worldGenerator.getBlockType(world::BlockPos{ x, surfaceHeight, y });
+				// TODO: Make color darkness scale with height
 				BlockPixel blockColor = blockColors.at(block);
 
 				int resultIndex = (y * NOISE_TEX_SIZE + x) * 4;
@@ -66,32 +67,17 @@ namespace voxel_game
 		world::WorldGenerator worldGenerator(seed);
 
 		std::vector<unsigned char> result(NOISE_TEX_SIZE * NOISE_TEX_SIZE * 4, 255);
-		int* heights = new int[NOISE_TEX_SIZE * NOISE_TEX_SIZE];
-
-		int maxHeight = 0;
-
 		unsigned char alpha = static_cast<unsigned char>(255.f);
 
 		for (int x = 0; x < NOISE_TEX_SIZE; ++x)
 		{
 			for (int y = 0; y < NOISE_TEX_SIZE; ++y)
 			{
-				int height = worldGenerator.getHeight(x, y);
-				maxHeight = std::max(height, maxHeight);
-
-				heights[y * NOISE_TEX_SIZE + x] = height;
-			}
-		}
-
-		for (int x = 0; x < NOISE_TEX_SIZE; ++x)
-		{
-			for (int y = 0; y < NOISE_TEX_SIZE; ++y)
-			{
 				int i = y * NOISE_TEX_SIZE + x;
-				int height = heights[i];
-
-				unsigned char byteVal = static_cast<unsigned char>((float)height / maxHeight * 255.f);
-
+				float height = worldGenerator.getNoise(x, y);
+		
+				unsigned char byteVal = static_cast<unsigned char>(height * 255.f);
+		
 				int resultIndex = i * 4;
 				result[resultIndex] = byteVal;
 				result[resultIndex + 1] = byteVal;
@@ -105,8 +91,6 @@ namespace voxel_game
 		{
 			std::cout << "Error " << error << ": " << lodepng_error_text(error) << std::endl;
 		}
-
-		delete[] heights;
 	}
 
 	void NoiseTool::draw()
