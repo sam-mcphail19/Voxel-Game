@@ -10,7 +10,7 @@
 
 #pragma comment(lib, "dbghelp.lib")
 
-void printStackTrace() {
+std::string getStackTrace() {
 	HANDLE process = GetCurrentProcess();
 	SymInitialize(process, nullptr, TRUE);
 
@@ -25,23 +25,31 @@ void printStackTrace() {
 	DWORD displacement;
 	line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
 
+	std::ostringstream oss;
+
 	for (unsigned short i = 0; i < frames; i++) {
 		SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
 		if (SymGetLineFromAddr64(process, (DWORD64)stack[i], &displacement, &line)) {
-			std::cout << "\t" << frames - i - 1 << ": " << symbol->Name << " - 0x" << std::hex << symbol->Address << std::dec << " (" << line.FileName << ":" << line.LineNumber << ")" << std::endl;
+			oss << "\t" << frames - i - 1 << ": " << symbol->Name
+				<< " - 0x" << std::hex << symbol->Address << std::dec
+				<< " (" << line.FileName << ":" << line.LineNumber << ")\n";
 		}
 		else {
-			std::cout << "\t" << frames - i - 1 << ": " << symbol->Name << " - 0x" << std::hex << symbol->Address << std::dec << std::endl;
+			oss << "\t" << frames - i - 1 << ": " << symbol->Name
+				<< " - 0x" << std::hex << symbol->Address << std::dec << "\n";
 		}
 	}
 
 	free(symbol);
 	SymCleanup(process);
+
+	return oss.str();
 }
 
 LONG WINAPI exceptionHandler(EXCEPTION_POINTERS* ExceptionInfo) {
-	std::cerr << "Exception caught!" << std::endl;
-	printStackTrace();
+	std::ostringstream message;
+	message << "Exception caught!\n" << getStackTrace();
+	voxel_game::log::error(message.str());
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
