@@ -2,6 +2,8 @@
 .vs
 
 build
+bin
+obj
 Voxel-Game
 x64
 diagsession
