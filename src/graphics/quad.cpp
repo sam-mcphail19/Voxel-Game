@@ -3,69 +3,69 @@
 namespace voxel_game::graphics
 {
 	const int Quad::vertexPositions[] = {
-		// Front Face
-		0, 1, 1,
-		0, 0, 1,
-		1, 0, 1,
-		1, 1, 1,
+		// Front Face (z+)
+		0, 0, 1, // v0
+		1, 0, 1, // v1
+		1, 1, 1, // v2
+		0, 1, 1, // v3
 
-		// Back Face
-		1, 0, 0,
-		0, 0, 0,
-		0, 1, 0,
-		1, 1, 0,
+		// Back Face (z-)
+		1, 0, 0, // v0
+		0, 0, 0, // v1
+		0, 1, 0, // v2
+		1, 1, 0, // v3
 
-		// Right Face
-		1, 1, 1,
-		1, 0, 1,
-		1, 0, 0,
-		1, 1, 0,
+		// Right Face (x+)
+		1, 0, 1, // v0
+		1, 0, 0, // v1
+		1, 1, 0, // v2
+		1, 1, 1, // v3
 
-		// Left Face
-		0, 1, 1,
-		0, 1, 0,
-		0, 0, 0,
-		0, 0, 1,
+		// Left Face (x-)
+		0, 0, 0, // v0
+		0, 0, 1, // v1
+		0, 1, 1, // v2
+		0, 1, 0, // v3
 
-		// Top Face
-		0, 1, 0,
-		0, 1, 1,
-		1, 1, 1,
-		1, 1, 0,
+		// Top Face (y+)
+		0, 1, 1, // v0
+		1, 1, 1, // v1
+		1, 1, 0, // v2
+		0, 1, 0, // v3
 
-		// Bottom Face
-		1, 0, 0,
-		1, 0, 1,
-		0, 0, 1,
-		0, 0, 0,
+		// Bottom Face (y-)
+		0, 0, 0, // v0
+		1, 0, 0, // v1
+		1, 0, 1, // v2
+		0, 0, 1  // v3
 	};
 
-	const std::vector<GLuint> Quad::indices({ 0, 1, 3, 3, 1, 2 });
+	const std::vector<GLuint> Quad::indices({ 0, 1, 2, 0, 2, 3 });
 
 	const int Quad::uvs[] = {
 		// Front Face
-		0, 1,
 		0, 0,
 		1, 0,
 		1, 1,
+		0, 1,
 
 		// Back Face
-		1, 0,
 		0, 0,
-		0, 1,
+		1, 0,
 		1, 1,
+		0, 1,
 
 		// Right Face
-		0, 1,
 		0, 0,
 		1, 0,
 		1, 1,
+		0, 1,
 
 		// Left Face
-		1, 1,
-		0, 1,
 		0, 0,
 		1, 0,
+		1, 1,
+		0, 1,
 
 		// Top Face
 		0, 0,
@@ -75,9 +75,9 @@ namespace voxel_game::graphics
 
 		// Bottom Face
 		0, 0,
-		0, 1,
-		1, 1,
 		1, 0,
+		1, 1,
+		0, 1
 	};
 
 	const std::map<Direction, glm::vec3> Quad::normalMap = {
@@ -107,7 +107,8 @@ namespace voxel_game::graphics
 		{Direction::BOTTOM, 40},
 	};
 
-	const int Quad::vertexCount = 6;
+	const int Quad::vertexCount = 4;
+	const int Quad::indexCount = 6;
 
 	Quad::Quad(std::vector<Vertex>* vertices, physics::Transform* transform, Texture* texture) :
 		m_vertices(vertices), m_transform(transform), m_texture(texture) {}

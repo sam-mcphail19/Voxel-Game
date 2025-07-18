@@ -52,6 +52,7 @@ namespace voxel_game::graphics
 		static const std::map<Direction, int> vertexPositionIndexMap;
 		static const std::map<Direction, int> uvIndexMap;
 		static const int vertexCount;
+		static const int indexCount;
 	};
 
 	std::string getName(Direction direction);

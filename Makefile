@@ -1,6 +1,6 @@
 # === Compiler and flags ===
 CXX := g++
-CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Isrc
+CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Isrc -DGLM_ENABLE_EXPERIMENTAL
 LDFLAGS := -L/mingw64/lib
 
 # === Source layout ===

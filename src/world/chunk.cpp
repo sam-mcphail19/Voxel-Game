@@ -85,7 +85,7 @@ namespace voxel_game::world
 
 	void Chunk::addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
 	{
-		for (int j = 0; j < g::Quad::vertexCount; j++)
+		for (int j = 0; j < g::Quad::indexCount; j++)
 		{
 			indices.push_back(g::Quad::indices[j] + vertices.size());
 		}

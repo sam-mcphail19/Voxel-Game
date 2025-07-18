@@ -65,7 +65,7 @@ namespace voxel_game::graphics
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_fVbo);
 		std::vector<float> floatBuffer = createFloatBuffer();
-		glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * VERTEX_FLOAT_SIZE * sizeof(float), &floatBuffer[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * VERTEX_FLOAT_SIZE * sizeof(float), floatBuffer.data(), GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(GLuint), m_indices.data(), GL_STATIC_DRAW);
