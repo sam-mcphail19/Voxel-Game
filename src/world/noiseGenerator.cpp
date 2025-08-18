@@ -25,4 +25,27 @@ namespace voxel_game::world
 
         return (sum / maxAmplitude + 1) / 2;
     }
+
+    float NoiseGenerator::noise3(int x, int y, int z, float scale, float lacunarity, float persistance, int octaves)
+    {
+        float sum = 0;
+        float maxAmplitude = 0;
+
+        for (int i = 0; i < octaves; i++)
+        {
+            float frequency = pow(lacunarity, i);
+            float amplitude = pow(persistance, octaves - i);
+
+            float noise = m_simplex->noise3_XZBeforeY(
+                x * scale / frequency,
+                y * scale / frequency,
+                z * scale / frequency
+            );
+
+            sum += noise * amplitude;
+            maxAmplitude += amplitude;
+        }
+
+        return (sum / maxAmplitude + 1) / 2;
+    }
 }

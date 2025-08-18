@@ -2,7 +2,7 @@
 
 namespace voxel_game::graphics
 {
-	std::unordered_map<const char *, Texture *> textureMap;
+	std::unordered_map<std::string, Texture *> textureMap;
 
 	Texture::Texture(GLuint id)
 	{
@@ -19,7 +19,7 @@ namespace voxel_game::graphics
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	Texture* loadTexture(const char *resourcePath, bool forceReload)
+	Texture* loadTexture(std::string resourcePath, bool forceReload)
 	{
 		if (!forceReload && textureMap.find(resourcePath) != textureMap.end())
 		{
@@ -28,7 +28,7 @@ namespace voxel_game::graphics
 
 		stbi_set_flip_vertically_on_load(1);
 		int width, height, bitsPerPixel;
-		unsigned char *buffer = stbi_load(resourcePath, &width, &height, &bitsPerPixel, 4);
+		unsigned char *buffer = stbi_load(resourcePath.c_str(), &width, &height, &bitsPerPixel, 4);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

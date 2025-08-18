@@ -8,6 +8,7 @@ namespace voxel_game
 			{world::BlockTypeId::DIRT, BlockPixel{170_uchar, 40_uchar, 40_uchar}},
 			{world::BlockTypeId::GRASS, BlockPixel{30_uchar, 220_uchar, 100_uchar}},
 			{world::BlockTypeId::SAND, BlockPixel{200_uchar, 180_uchar, 130_uchar}},
+			{world::BlockTypeId::GRAVEL, BlockPixel{150_uchar, 150_uchar, 150_uchar}},
 	};
 
 	NoiseTool::NoiseTool()
@@ -30,7 +31,8 @@ namespace voxel_game
 
 	void NoiseTool::createNoiseTexture(long seed)
 	{
-		world::WorldGenerator worldGenerator(seed);
+		//world::SplineBasedWorldGenerator worldGenerator(seed);
+		world::BiomeBasedWorldGenerator worldGenerator(seed);
 
 		std::vector<unsigned char> result(NOISE_TEX_SIZE * NOISE_TEX_SIZE * 4, 255);
 		world::BlockTypeId* blocks = new world::BlockTypeId[NOISE_TEX_SIZE * NOISE_TEX_SIZE];
@@ -64,7 +66,7 @@ namespace voxel_game
 
 	void NoiseTool::createNoiseTextureGreyScale(long seed)
 	{
-		world::WorldGenerator worldGenerator(seed);
+		world::SplineBasedWorldGenerator worldGenerator(seed);
 
 		std::vector<unsigned char> result(NOISE_TEX_SIZE * NOISE_TEX_SIZE * 4, 255);
 		unsigned char alpha = static_cast<unsigned char>(255.f);

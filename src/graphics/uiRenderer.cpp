@@ -28,11 +28,9 @@ namespace voxel_game::graphics
 		{
 			ImGui::Begin("Debug");
 			ImGui::SetWindowPos("Debug", ImVec2(10, 10));
-			ImGui::SetWindowSize("Debug", ImVec2(270, 100));
+			ImGui::SetWindowSize("Debug", ImVec2(270, 130));
 			ImGui::Text("Player position: (%d, %d, %d)", debugInfo.x, debugInfo.y, debugInfo.z);
-			ImGui::Text("C: %f", debugInfo.m_c);
-			ImGui::Text("E: %f", debugInfo.m_e);
-			ImGui::Text("PV: %f", debugInfo.m_pv);
+			ImGui::Text("Player position: (%d, %d, %d)", debugInfo.x, debugInfo.y, debugInfo.z);
 			ImGui::End();
 		}
 

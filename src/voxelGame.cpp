@@ -20,8 +20,7 @@ namespace voxel_game
 
 		m_crosshair = g::Quad::createQuad(crosshairTransform, g::loadTexture("res/texture/crosshair.png"));
 
-		world::WorldGenerator generator(0L);
-		m_world = new world::World(generator, &m_chunkShader, *m_player);
+		m_world = new world::World(0L, &m_chunkShader, *m_player);
 		m_world->generate();
 	}
 

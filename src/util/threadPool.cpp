@@ -4,6 +4,7 @@ namespace voxel_game::utils
 {
 	void ThreadPool::start() {
 		const uint32_t num_threads = std::thread::hardware_concurrency(); // Max # of threads the system supports
+		//const uint32_t num_threads = 1;
 		for (uint32_t i = 0; i < num_threads; i++) {
 			m_threads.emplace_back(std::thread(&ThreadPool::threadLoop, this));
 		}

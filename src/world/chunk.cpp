@@ -69,18 +69,14 @@ namespace voxel_game::world
 			}
 		}
 
-		g::Mesh* newMesh = new graphics::Mesh(vertices, indices, nullptr, g::loadTextureAtlas());
-		g::Mesh* newTransparentMesh = new graphics::Mesh(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
+		auto newMesh = std::make_shared<graphics::Mesh>(vertices, indices, nullptr, g::loadTextureAtlas());
+		auto newTransparentMesh = std::make_shared<graphics::Mesh>(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
 
-		std::unique_lock<std::mutex> lock = acquireLock();
-
-		std::swap(m_mesh, newMesh);
-		std::swap(m_transparentMesh, newTransparentMesh);
-
-		delete newMesh;
-		newMesh = nullptr;
-		delete newTransparentMesh;
-		newTransparentMesh = nullptr;
+		{
+			std::unique_lock<std::mutex> lock = acquireLock();
+			m_mesh = std::move(newMesh);
+			m_transparentMesh = std::move(newTransparentMesh);
+		}
 	}
 
 	void Chunk::addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
@@ -128,12 +124,12 @@ namespace voxel_game::world
 		return std::unique_lock<std::mutex>(m_mutex);
 	}
 
-	graphics::Mesh* Chunk::getMesh()
+	std::shared_ptr<g::Mesh> Chunk::getMesh()
 	{
 		return m_mesh;
 	}
 
-	graphics::Mesh* Chunk::getTransparentMesh()
+	std::shared_ptr<g::Mesh> Chunk::getTransparentMesh()
 	{
 		return m_transparentMesh;
 	}
@@ -163,19 +159,21 @@ namespace voxel_game::world
 		return glm::vec3(blockPos.x, blockPos.y, blockPos.z);
 	}
 
+	bool Chunk::isBlockInBounds(const BlockPos& blockPos) const {
+		return blockPos.x >= 0 && blockPos.x < CHUNK_SIZE &&
+			blockPos.z >= 0 && blockPos.z < CHUNK_SIZE;
+	}
+
 	bool Chunk::isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager)
 	{
 		BlockPos neighbourPos = face.pos + toBlockPos(getNormal(face.dir));
-		bool neighbourInThisChunk = neighbourPos.x >= 0 &&
-			neighbourPos.x < CHUNK_SIZE &&
-			neighbourPos.z >= 0 &&
-			neighbourPos.z < CHUNK_SIZE &&
-			neighbourPos.y >= 0 &&
-			neighbourPos.y < CHUNK_HEIGHT;
-
 		BlockTypeId neighbour;
 
-		if (neighbourInThisChunk)
+		if (neighbourPos.y < 0 || neighbourPos.y > CHUNK_HEIGHT)
+		{
+			return true;
+		}
+		if (isBlockInBounds(neighbourPos))
 		{
 			neighbour = getBlock(neighbourPos);
 		}

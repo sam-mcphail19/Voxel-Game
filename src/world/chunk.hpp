@@ -3,6 +3,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <utility>
+#include <memory>
 #include <glm/vec3.hpp>
 #include "block.hpp"
 #include "chunkManager.hpp"
@@ -25,10 +26,11 @@ namespace voxel_game::world
 		BlockPos m_origin;
 		World* m_world;
 		BlockTypeId* m_blocks;
-		graphics::Mesh* m_mesh = nullptr;
-		graphics::Mesh* m_transparentMesh = nullptr;
+		std::shared_ptr<g::Mesh> m_mesh = nullptr;
+		std::shared_ptr<g::Mesh> m_transparentMesh = nullptr;
 		std::mutex m_mutex;
 
+		bool isBlockInBounds(const BlockPos& blockPos) const;
 		bool isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager);
 		Chunk* getNeighbourChunk(graphics::Direction direction, ChunkManager& chunkManager);
 
@@ -43,8 +45,8 @@ namespace voxel_game::world
 		BlockPos getOrigin() const;
 		BlockPos getChunkCoord();
 		std::unique_lock<std::mutex> acquireLock();
-		graphics::Mesh* getMesh();
-		graphics::Mesh* getTransparentMesh();
+		std::shared_ptr<g::Mesh> getMesh();
+		std::shared_ptr<g::Mesh> getTransparentMesh();
 	};
 
 	int to1dIndex(int x, int y, int z);

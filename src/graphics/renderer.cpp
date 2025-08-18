@@ -24,9 +24,13 @@ namespace voxel_game::graphics
 
 		for (world::Chunk* chunk: chunks)
 		{
-			chunk->acquireLock();
-			chunk->getMesh()->render();
-			chunk->getTransparentMesh()->render();
+			std::unique_lock<std::mutex> lock = chunk->acquireLock();
+
+			std::shared_ptr<g::Mesh> mesh = chunk->getMesh();
+			std::shared_ptr<g::Mesh> transparentMesh = chunk->getTransparentMesh();
+
+			if (mesh) mesh->render();
+			if (transparentMesh) transparentMesh->render();
 		}
 	}
 

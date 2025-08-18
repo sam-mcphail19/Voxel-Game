@@ -5,7 +5,7 @@
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
 #include "world/block.hpp"
-#include "world/worldGenerator.hpp"
+#include "world/splineBasedWorldGenerator.hpp"
 #include "util/log.hpp"
 #include "vendor/lodepng.h"
 #include "vendor/stb_image.h"

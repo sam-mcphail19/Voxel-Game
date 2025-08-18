@@ -3,7 +3,7 @@
 namespace voxel_game::graphics
 {
 	int texturesPerRow;
-	std::unordered_map<std::string, glm::vec2> textureMap;
+	std::unordered_map<std::string, glm::vec2> textureAtlasMap;
 
 	void createTextureAtlas()
 	{
@@ -39,7 +39,7 @@ namespace voxel_game::graphics
 
 			float texX = (float)x / width;
 			float texY = 1 - (float)y / height - ATLAS_TEXTURE_SIZE / (float) height;
-			textureMap[voxel_game::utils::getFileName(path)] = glm::vec2{texX, texY};
+			textureAtlasMap[voxel_game::utils::getFileName(path)] = glm::vec2{texX, texY};
 
 			log::info("Added " + path.string() + " to position: (" + std::to_string(texX) + "," + std::to_string(texY) + ")");
 
@@ -56,7 +56,7 @@ namespace voxel_game::graphics
 		unsigned error = lodepng::encode(TEXTURE_ATLAS_PATH, result, width, height);
 		if (error)
 		{
-			std::cout << "Error " << error << ": " << lodepng_error_text(error) << std::endl;
+			log::error("Error " + std::to_string(error) + ": " + lodepng_error_text(error)); 
 		}
 
 		loadTextureAtlas();
@@ -74,14 +74,16 @@ namespace voxel_game::graphics
 
 	glm::vec2 getTextureAtlasCoords(AtlasTexture texture)
 	{
-		if (textureMap.find(getName(texture)) == textureMap.end())
+		const std::string& name = getName(texture);
+		auto it = textureAtlasMap.find(name);
+
+		if (it == textureAtlasMap.end())
 		{
-			// TODO: Adding error logging to logger
-			std::cerr << "No texture found for " << (int) texture << std::endl; 
-			return textureMap["placeholder"];
+			log::error("No texture found for " + name);
+			return textureAtlasMap["placeholder"];
 		}
 
-		return textureMap[getName(texture)];
+		return it->second;
 	}
 
 	Texture* loadTextureAtlas()

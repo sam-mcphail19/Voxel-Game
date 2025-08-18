@@ -2,8 +2,8 @@
 
 namespace voxel_game::world
 {
-	World::World(WorldGenerator& worldGenerator, g::Shader* shader, Player& player)
-		: m_chunkManager(ChunkManager()), m_worldGenerator(worldGenerator), m_threadPool(utils::ThreadPool()), m_shader(shader), m_player(player)
+	World::World(long seed, g::Shader* shader, Player& player)
+		: m_seed(seed), m_chunkManager(ChunkManager()), m_worldGenerator(BiomeBasedWorldGenerator(seed)), m_threadPool(utils::ThreadPool()), m_shader(shader), m_player(player)
 	{
 		m_threadPool.start();
 	}
@@ -34,7 +34,7 @@ namespace voxel_game::world
 		}
 
 		const auto end = std::chrono::system_clock::now();
-		int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 		log::info("World generation took " + std::to_string(durationMs) + "ms");
 	}
 
@@ -108,13 +108,26 @@ namespace voxel_game::world
 		}
 
 		BlockPos playerPos = toBlockPos(m_player.getPos());
+
+		if (input::isKeyPressed(GLFW_KEY_P))
+		{
+			log::info("C: " + std::to_string(m_worldGenerator.calcContinentalness(playerPos.x, playerPos.z)));
+			log::info("E: " + std::to_string(m_worldGenerator.calcErosion(playerPos.x, playerPos.z)));
+			log::info("T: " + std::to_string(m_worldGenerator.calcTemperature(playerPos.x, playerPos.z)));
+			log::info("H: " + std::to_string(m_worldGenerator.calcHumidity(playerPos.x, playerPos.z)));
+
+			std::vector<BiomeWeight> weights = m_worldGenerator.buildWeights(playerPos.x, playerPos.z);
+			for (BiomeWeight weight : weights)
+			{
+				log::info(toString(weight.biome->type) + ": " + std::to_string(weight.weight));
+			}
+			log::info("----------------------------");
+		}
+
 		return DebugInfo{
 			playerPos.x,
 			playerPos.y,
 			playerPos.z,
-			m_worldGenerator.getContinentalness(playerPos.x, playerPos.z),
-			m_worldGenerator.getErosion(playerPos.x, playerPos.z),
-			m_worldGenerator.getPeaksAndValleys(playerPos.x, playerPos.z)
 		};
 	}
 
@@ -164,6 +177,7 @@ namespace voxel_game::world
 		chunk->putBlock(Block{ localBlockPos, BlockTypeId::AIR });
 		updateChunkMeshAsync(chunk);
 
+		// TODO: refactor to be less repetitive
 		if (localBlockPos.x == 0)
 		{
 			chunk = m_chunkManager.getChunk(chunkCoord - BlockPos{ 1, 0, 0 });
@@ -293,8 +307,8 @@ namespace voxel_game::world
 		chunk->updateMesh(m_chunkManager);
 
 		const auto end = std::chrono::system_clock::now();
-		int durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-		log::info("Finished updating mesh for chunk at " + chunk->getChunkCoord() + 
+		auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		log::info("Finished updating mesh for chunk at " + chunk->getChunkCoord() +
 			". Total vertices: " + std::to_string(chunk->getMesh()->getVertexCount()) +
 			". Duration:" + std::to_string(durationMs) + "ms"
 		);
@@ -309,13 +323,14 @@ namespace voxel_game::world
 		m_threadPool.queueJob(job);
 	}
 
-	// TODO: Can this all be done on another thread?
 	void World::generateChunk(BlockPos chunkCoord)
 	{
 		log::info("Generating chunk data for chunk at " + chunkCoord);
 
 		Chunk* chunk = new Chunk(chunkCoord, this);
-		m_worldGenerator.generateChunkData(*chunk);
+		BiomeBasedWorldGenerator* worldGenerator = new BiomeBasedWorldGenerator(m_seed);
+		worldGenerator->generateChunkData(*chunk);
+		delete worldGenerator;
 
 		log::info("Finished generating chunk data for chunk at " + chunkCoord);
 

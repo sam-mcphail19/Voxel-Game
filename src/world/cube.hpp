@@ -54,6 +54,8 @@ namespace voxel_game::world
 				{BlockTypeId::GRASS, BlockType(BlockTypeId::GRASS, [](Block block) { return multiTextureCube(block, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS_SIDE, g::AtlasTexture::GRASS, g::AtlasTexture::DIRT); })},
 				{BlockTypeId::BEDROCK, BlockType(BlockTypeId::BEDROCK, [](Block block) { return singleTextureCube(block, g::AtlasTexture::BEDROCK); })},
 				{BlockTypeId::SAND, BlockType(BlockTypeId::SAND, [](Block block) { return singleTextureCube(block, g::AtlasTexture::SAND); })},
+				{BlockTypeId::GRAVEL, BlockType(BlockTypeId::GRAVEL, [](Block block) { return singleTextureCube(block, g::AtlasTexture::GRAVEL); })},
+				{BlockTypeId::SANDSTONE, BlockType(BlockTypeId::SANDSTONE, [](Block block) { return multiTextureCube(block, g::AtlasTexture::SANDSTONE_SIDE, g::AtlasTexture::SANDSTONE_SIDE, g::AtlasTexture::SANDSTONE_SIDE, g::AtlasTexture::SANDSTONE_SIDE, g::AtlasTexture::SANDSTONE, g::AtlasTexture::SANDSTONE); })},
 			};
 			return blockTypes.at(id);
 		}

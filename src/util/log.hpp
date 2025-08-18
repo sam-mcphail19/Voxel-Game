@@ -6,6 +6,8 @@
 #include <chrono>
 #include <thread>
 #include <sstream>
+#include <type_traits>
+#include <iterator>
 
 namespace voxel_game::log
 {
@@ -26,6 +28,19 @@ namespace voxel_game::log
 			return os << "INFO";
 		}
 	}
+
+	template <typename T, typename = void>
+	struct is_iterable : std::false_type {};
+
+	// If calling std::begin(t) and std::end(t) is valid for some type T then is_iterable<T> should inherit from std::true_type
+	template <typename T>
+	struct is_iterable<T, std::void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>> : std::true_type {};
+
+	// Exclude std::string from iterable handling
+	template <typename T>
+	constexpr bool is_iterable_but_not_string =
+		is_iterable<T>::value &&
+		!std::is_same<std::decay_t<T>, std::string>::value;
 	
 	class Logger
 	{
@@ -44,13 +59,37 @@ namespace voxel_game::log
 		}
 
 		template <typename T>
+		static inline typename std::enable_if<!is_iterable_but_not_string<T>, std::string>::type
+		formatMessage(const T &message)
+		{
+			std::ostringstream oss;
+			oss << message;
+			return oss.str();
+		}
+
+		template <typename T>
+		static inline typename std::enable_if<is_iterable_but_not_string<T>, std::string>::type
+		formatMessage(const T &message)
+		{
+			std::ostringstream oss;
+			oss << "[";
+			for (auto it = std::begin(message); it != std::end(message); ++it)
+			{
+				if (it != std::begin(message)) oss << ", ";
+				oss << *it;
+			}
+			oss << "]";
+			return oss.str();
+		}
+
+		template <typename T>
 		static inline std::string buildMessage(const T &message, const LogLevel &level)
 		{
 			std::ostringstream oss;
 			oss << currentTimestamp()
 				<< " [" << level << "] "
 				<< "(Thread-" << std::this_thread::get_id() << ") "
-				<< message;
+				<< formatMessage(message);
 			return oss.str();
 		}
 

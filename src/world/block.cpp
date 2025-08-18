@@ -13,6 +13,8 @@ namespace voxel_game::world
 			{BlockTypeId::DIRT, "Dirt"},
 			{BlockTypeId::GRASS, "Grass"},
 			{BlockTypeId::SAND, "Sand"},
+			{BlockTypeId::GRAVEL, "Gravel"},
+			{BlockTypeId::SANDSTONE, "Sandstone"},
 		};
 
 		auto it = blockTypeStrings.find(id);

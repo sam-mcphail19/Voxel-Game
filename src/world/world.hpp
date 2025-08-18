@@ -5,7 +5,7 @@
 #include <thread>
 #include "block.hpp"
 #include "chunkManager.hpp"
-#include "worldGenerator.hpp"
+#include "biomeBasedWorldGenerator.hpp"
 #include "../player.hpp"
 #include "../graphics/shader.hpp"
 #include "../util/mathUtils.hpp"
@@ -20,7 +20,7 @@ namespace voxel_game::world
 	struct DebugInfo
 	{
 		int x, y, z;
-		float m_c, m_e, m_pv;
+		float m_c, m_e, m_pv, m_s;
 	};
 
 	struct RaycastResult
@@ -32,8 +32,9 @@ namespace voxel_game::world
 	class World
 	{
 	private:
+		long m_seed;
 		ChunkManager m_chunkManager;
-		WorldGenerator m_worldGenerator;
+		BiomeBasedWorldGenerator m_worldGenerator;
 		utils::ThreadPool m_threadPool;
 		std::set<BlockPos> m_generatingChunks;
 		std::mutex m_generatingChunksMutex;
@@ -64,7 +65,7 @@ namespace voxel_game::world
 		bool chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player);
 
 	public:
-		World(WorldGenerator &worldGenerator, g::Shader* shader, Player &player);
+		World(long seed, g::Shader* shader, Player &player);
 		~World();
 		void generate();
 		DebugInfo update();

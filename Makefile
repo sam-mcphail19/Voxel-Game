@@ -1,6 +1,8 @@
 # === Compiler and flags ===
 CXX := g++
-CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Isrc -DGLM_ENABLE_EXPERIMENTAL
+# generate dependency files (-MMD -MP), keep other flags the same
+DEPFLAGS := -MMD -MP
+CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Isrc -DGLM_ENABLE_EXPERIMENTAL $(DEPFLAGS)
 LDFLAGS := -L/mingw64/lib
 
 # === Source layout ===
@@ -14,6 +16,7 @@ SRCS := $(wildcard $(SRC_DIR)/*.cpp) \
         $(wildcard $(SRC_DIR)/*/*.cpp) \
         $(wildcard $(SRC_DIR)/*/*/*.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
+DEPS := $(OBJS:.o=.d)
 
 # === Linker flags ===
 LIBS := -lglfw3 -lglew32 -lopengl32 -ldbghelp
@@ -36,7 +39,10 @@ run: $(TARGET)
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -f $(DEPS)
 
 install:
 	pacman -Syu
 	pacman -S mingw-w64-x86_64-glfw mingw-w64-x86_64-glew mingw-w64-x86_64-opengl
+
+-include $(DEPS)

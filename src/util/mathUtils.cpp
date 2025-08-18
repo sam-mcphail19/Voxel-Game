@@ -21,7 +21,7 @@ namespace voxel_game::utils
 	{
 		return a <= b ? a : b;
 	}
-	
+
 	int floorDiv(int a, int b)
 	{
 		int result = a / b;
@@ -56,6 +56,11 @@ namespace voxel_game::utils
 		return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3);
 	}
 
+	float sigmoid(float maxVal, float midPoint, float steepness, float x)
+	{
+		return maxVal / (1 + std::exp(-steepness * (x - midPoint)));
+	}
+
 	float evaluate(const glm::vec2* points, int pointCount, float x)
 	{
 		for (int i = 1; i < pointCount; i++)
@@ -85,5 +90,23 @@ namespace voxel_game::utils
 	float roundToNearestNth(float val, float n)
 	{
 		return std::round(val * n) / n;
+	}
+
+	float smoothStep(float edge0, float edge1, float x)
+	{
+		x = glm::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+		return x * x * (3.0f - 2.0f * x);
+	}
+
+	float bilerp(float nw, float ne, float sw, float se, float tx, float tz)
+	{
+		float top = glm::mix(nw, ne, tx);
+		float bottom = glm::mix(sw, se, tx);
+		return glm::mix(top, bottom, tz);
+	}
+
+	float average(std::vector<float> vec)
+	{
+		return std::reduce(vec.begin(), vec.end()) / vec.size();
 	}
 }

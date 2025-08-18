@@ -14,5 +14,6 @@ namespace voxel_game::world
 		NoiseGenerator(long seed);
 		// Returns a value between 0 and 1
 		float noise2(int x, int y, float scale, float lacunarity, float persistance, int octaves);
+		float noise3(int x, int y, int z, float scale, float lacunarity, float persistance, int octaves);
 	};
 }

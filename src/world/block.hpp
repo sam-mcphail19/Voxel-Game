@@ -9,6 +9,7 @@
 
 namespace voxel_game::world
 {
+	// TODO: move to some kind of config so game doesnt need to be recompiled to add block types
 	enum class BlockTypeId
 	{
 		NONE,
@@ -19,6 +20,8 @@ namespace voxel_game::world
 		DIRT,
 		GRASS,
 		SAND,
+		GRAVEL,
+		SANDSTONE,
 	};
 
 	std::string toString(BlockTypeId id);
