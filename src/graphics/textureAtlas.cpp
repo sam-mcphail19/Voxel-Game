@@ -86,6 +86,11 @@ namespace voxel_game::graphics
 		return it->second;
 	}
 
+	glm::vec2 getTextureAtlasTileCoords(AtlasTexture texture)
+	{
+		return getTextureAtlasCoords(texture) / getTextureAtlasTextureSize();
+	}
+
 	Texture* loadTextureAtlas()
 	{
 		return loadTexture(TEXTURE_ATLAS_PATH);

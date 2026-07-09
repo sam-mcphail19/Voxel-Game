@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include "../graphics/frustum.hpp"
 
 namespace voxel_game::world
 {
@@ -145,11 +146,15 @@ namespace voxel_game::world
 	std::vector<Chunk*> World::getVisibleChunks()
 	{
 		std::vector<Chunk*> visibleChunks;
+		std::array<g::Plane, 6> frustum = g::buildCameraFrustum(m_player.getCamera());
 		for (Chunk* chunk : m_chunkManager.getChunks())
 		{
 			if (chunk->getMesh() != nullptr && m_player.chunkIsVisible(chunk))
 			{
-				queueVisibleChunkLodBuild(chunk);
+				if (g::chunkIntersectsFrustum(chunk, frustum))
+				{
+					queueVisibleChunkLodBuild(chunk);
+				}
 				visibleChunks.push_back(chunk);
 			}
 		}

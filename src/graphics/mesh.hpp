@@ -17,7 +17,8 @@
 #define POS_SIZE 3
 #define NORMAL_SIZE 3
 #define UV_SIZE 2
-#define VERTEX_FLOAT_SIZE 8
+#define ATLAS_TILE_SIZE 2
+#define VERTEX_FLOAT_SIZE 10
 
 #define FLAGS_SIZE 1
 #define BLOCK_TYPE_SIZE 1
@@ -31,12 +32,13 @@ namespace voxel_game::graphics
 		glm::vec3 m_position;
 		glm::vec3 m_normal;
 		glm::vec2 m_uv;
+		glm::vec2 m_atlasTile;
 		int m_flags;
 		int m_blockType;
 		world::BlockPos m_blockPos;
 
-		Vertex(glm::vec3 pos, glm::vec3 normal, glm::vec2 uv, world::BlockTypeId blockTypeId, world::BlockPos blockPos, bool isBlockVert)
-			: m_position(pos), m_normal(normal), m_uv(uv), m_blockType((int)blockTypeId), m_blockPos(blockPos)
+		Vertex(glm::vec3 pos, glm::vec3 normal, glm::vec2 uv, world::BlockTypeId blockTypeId, world::BlockPos blockPos, bool isBlockVert, glm::vec2 atlasTile = glm::vec2(0.f))
+			: m_position(pos), m_normal(normal), m_uv(uv), m_atlasTile(atlasTile), m_blockType((int)blockTypeId), m_blockPos(blockPos)
 		{
 			m_flags = isBlockVert;
 		}
@@ -47,7 +49,7 @@ namespace voxel_game::graphics
 			flag << "0x" << std::hex << vert.m_flags;
 			std::stringstream blockType;
 			blockType << "0x" << std::hex << vert.m_blockType;
-			os << "Vertex(" << glm::to_string(vert.m_position) << ", " << glm::to_string(vert.m_normal) << ", " << glm::to_string(vert.m_uv) << ", " << flag.str();
+			os << "Vertex(" << glm::to_string(vert.m_position) << ", " << glm::to_string(vert.m_normal) << ", " << glm::to_string(vert.m_uv) << ", " << glm::to_string(vert.m_atlasTile) << ", " << flag.str();
 			os << ", " << blockType.str() << ", " << vert.m_blockPos << ")";
 			return os;
 		}

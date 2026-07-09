@@ -7,6 +7,7 @@
 #include "mesh.hpp"
 #include "shader.hpp"
 #include "camera.hpp"
+#include "frustum.hpp"
 #include "uiRenderer.hpp"
 #include "window.hpp"
 #include "../world/chunk.hpp"
@@ -18,13 +19,20 @@
 
 namespace voxel_game::graphics
 {
+	struct RenderStats
+	{
+		int vertexCount = 0;
+		int renderedChunkCount = 0;
+		int culledChunkCount = 0;
+	};
+
 	class Renderer
 	{
 	public:
 		Renderer(const Window& window);
 		
 		void renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
-		void renderChunks(std::vector<world::Chunk*> chunks, Shader *shader, Camera *camera);
+		RenderStats renderChunks(std::vector<world::Chunk*> chunks, Shader *shader, Camera *camera);
 		void renderOrtho(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
 		void renderUi(bool isDebugEnabled, world::DebugInfo debugInfo);
 

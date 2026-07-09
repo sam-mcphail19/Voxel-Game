@@ -58,7 +58,11 @@ namespace voxel_game
 		// TODO: add this to the window title instead of logging it
 		if (msSinceLastTpsLog > 1000)
 		{
-			log::info("TPS: " + std::to_string(m_ticks));
+			log::info("TPS: " + std::to_string(m_ticks) +
+				", rendered vertices: " + std::to_string(m_renderStats.vertexCount) +
+				", rendered chunks: " + std::to_string(m_renderStats.renderedChunkCount) +
+				", frustum culled chunks: " + std::to_string(m_renderStats.culledChunkCount)
+			);
 			m_lastTpsLogTime = startTime;
 			m_ticks = 0;
 		}
@@ -86,7 +90,7 @@ namespace voxel_game
 		m_window.update();
 
 		std::vector<world::Chunk*> visibleChunks = m_world->getVisibleChunks();
-		m_renderer.renderChunks(visibleChunks, &m_chunkShader, m_player->getCamera());
+		m_renderStats = m_renderer.renderChunks(visibleChunks, &m_chunkShader, m_player->getCamera());
 
 		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair->getMesh()};
 

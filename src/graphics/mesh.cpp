@@ -62,6 +62,7 @@ namespace voxel_game::graphics
 		glEnableVertexAttribArray(5);
 		glEnableVertexAttribArray(6);
 		glEnableVertexAttribArray(7);
+		glEnableVertexAttribArray(8);
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_fVbo);
 		std::vector<float> floatBuffer = createFloatBuffer();
@@ -77,6 +78,8 @@ namespace voxel_game::graphics
 		glVertexAttribPointer(1, NORMAL_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void*)(POS_SIZE * sizeof(float)));
 		// UVs (u,v)
 		glVertexAttribPointer(2, UV_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void*)((POS_SIZE + NORMAL_SIZE) * sizeof(float)));
+		// Atlas tile (x,y)
+		glVertexAttribPointer(8, ATLAS_TILE_SIZE, GL_FLOAT, GL_FALSE, floatBufferStride, (void*)((POS_SIZE + NORMAL_SIZE + UV_SIZE) * sizeof(float)));
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_iVbo);
 		std::vector<int> intBuffer = createIntBuffer();
@@ -109,6 +112,8 @@ namespace voxel_game::graphics
 			buffer[i * VERTEX_FLOAT_SIZE + 5] = m_vertices[i].m_normal.z;
 			buffer[i * VERTEX_FLOAT_SIZE + 6] = m_vertices[i].m_uv.x;
 			buffer[i * VERTEX_FLOAT_SIZE + 7] = m_vertices[i].m_uv.y;
+			buffer[i * VERTEX_FLOAT_SIZE + 8] = m_vertices[i].m_atlasTile.x;
+			buffer[i * VERTEX_FLOAT_SIZE + 9] = m_vertices[i].m_atlasTile.y;
 		}
 
 		return buffer;

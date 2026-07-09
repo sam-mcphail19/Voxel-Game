@@ -2,7 +2,6 @@
 
 namespace voxel_game::graphics
 {
-	static const glm::mat4 perspProjMat = glm::perspective(70.f, 16.f / 9, 0.1f, 1000.f);
 	static const glm::mat4 orthoProjMat = glm::ortho(-1, 1, -1, 1, -1, 1);
 	static const glm::mat4 orthViewMat = glm::mat4(1.f);
 
@@ -40,21 +39,41 @@ namespace voxel_game::graphics
 		}
 	}
 
-	void Renderer::renderChunks(std::vector<world::Chunk*> chunks, Shader* shader, Camera* camera)
+	RenderStats Renderer::renderChunks(std::vector<world::Chunk*> chunks, Shader* shader, Camera* camera)
 	{
 		setupPerspRender(shader, camera);
 
+		RenderStats stats;
+		std::array<Plane, 6> frustum = buildCameraFrustum(camera);
 		for (world::Chunk* chunk: chunks)
 		{
+			if (!chunkIntersectsFrustum(chunk, frustum))
+			{
+				stats.culledChunkCount++;
+				continue;
+			}
+
 			std::unique_lock<std::mutex> lock = chunk->acquireLock();
 			world::ChunkLod lod = selectChunkLod(chunk, camera);
 
 			std::shared_ptr<g::Mesh> mesh = chunk->getMesh(lod);
 			std::shared_ptr<g::Mesh> transparentMesh = chunk->getTransparentMesh(lod);
 
-			if (mesh) mesh->render();
-			if (transparentMesh) transparentMesh->render();
+			if (mesh)
+			{
+				stats.vertexCount += mesh->getVertexCount();
+				mesh->render();
+			}
+			if (transparentMesh)
+			{
+				stats.vertexCount += transparentMesh->getVertexCount();
+				transparentMesh->render();
+			}
+
+			stats.renderedChunkCount++;
 		}
+
+		return stats;
 	}
 
 	void Renderer::renderOrtho(std::vector<Mesh*> meshes, Shader* shader, Camera* camera)
@@ -93,7 +112,7 @@ namespace voxel_game::graphics
 		const glm::mat4 perspViewMat = camera->viewMatrix();
 
 		shader->setUniformMat4(VIEW_UNIFORM, perspViewMat);
-		shader->setUniformMat4(PROJ_UNIFORM, perspProjMat);
+		shader->setUniformMat4(PROJ_UNIFORM, perspectiveProjectionMatrix());
 	}
 
 	void Renderer::clear()

@@ -22,4 +22,5 @@ namespace voxel_game::graphics
 	float getTextureAtlasTextureSize();
 	Texture* loadTextureAtlas();
 	glm::vec2 getTextureAtlasCoords(AtlasTexture texture);
+	glm::vec2 getTextureAtlasTileCoords(AtlasTexture texture);
 }

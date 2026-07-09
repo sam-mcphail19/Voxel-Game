@@ -173,8 +173,7 @@ namespace voxel_game::graphics
 
 		int startingIndex = vertexPositionIndexMap.at(direction);
 		int uvIndex = uvIndexMap.at(direction);
-		glm::vec2 atlasCoords = getTextureAtlasCoords(texture);
-		float textureSize = getTextureAtlasTextureSize();
+		glm::vec2 atlasTileCoords = getTextureAtlasTileCoords(texture);
 
 		for (int i = 0; i < vertexCount; i++)
 		{
@@ -184,10 +183,10 @@ namespace voxel_game::graphics
 				vertexPositions[startingIndex + i * 3 + 2]
 			);
 			glm::vec2 uv = glm::vec2(
-				uvs[uvIndex + i * 2] * textureSize + atlasCoords.x,
-				uvs[uvIndex + i * 2 + 1] * textureSize + atlasCoords.y
+				uvs[uvIndex + i * 2],
+				uvs[uvIndex + i * 2 + 1]
 			);
-			Vertex vert(pos, normalMap.at(direction), uv, block.type, block.pos, true);
+			Vertex vert(pos, normalMap.at(direction), uv, block.type, block.pos, true, atlasTileCoords);
 			vertices->push_back(vert);
 		}
 

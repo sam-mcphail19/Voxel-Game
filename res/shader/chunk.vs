@@ -8,6 +8,7 @@ layout (location = 4) in uint i_blockType;
 layout (location = 5) in int i_blockPosX;
 layout (location = 6) in int i_blockPosY;
 layout (location = 7) in int i_blockPosZ;
+layout (location = 8) in vec2 i_atlasTileCoords;
 
 uniform mat4 u_view;
 uniform mat4 u_projection;
@@ -20,6 +21,7 @@ out vec4 v_color;
 out vec3 v_position;
 out vec3 v_normal;
 out vec2 v_texCoords;
+out vec2 v_atlasTileCoords;
 
 float lerp(float a, float b, float t) {
     return a + (b - a) * t;
@@ -65,6 +67,7 @@ void main(void) {
     v_position = i_position;
     v_normal = i_normal;
     v_texCoords = i_texCoords;
+    v_atlasTileCoords = i_atlasTileCoords;
 
     ivec3 blockPos = ivec3(i_blockPosX, i_blockPosY, i_blockPosZ);
 

@@ -130,6 +130,148 @@ namespace voxel_game::world
 
 	void Chunk::buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
 	{
+		buildGreedyOpaqueMeshForLod(lodScale, chunkManager, vertices, indices);
+		buildTransparentMeshForLod(lodScale, chunkManager, transparentVertices, transparentIndices);
+	}
+
+	void Chunk::buildGreedyOpaqueMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
+	{
+		for (int dirIndex = 0; dirIndex < 6; dirIndex++)
+		{
+			g::Direction dir = (g::Direction)dirIndex;
+			int uCells = (dir == g::Direction::FRONT || dir == g::Direction::BACK || dir == g::Direction::TOP || dir == g::Direction::BOTTOM)
+				? CHUNK_SIZE / lodScale
+				: CHUNK_SIZE / lodScale;
+			int vCells = (dir == g::Direction::TOP || dir == g::Direction::BOTTOM)
+				? CHUNK_SIZE / lodScale
+				: CHUNK_HEIGHT / lodScale;
+			int sliceCells = (dir == g::Direction::FRONT || dir == g::Direction::BACK)
+				? CHUNK_SIZE / lodScale
+				: (dir == g::Direction::RIGHT || dir == g::Direction::LEFT)
+					? CHUNK_SIZE / lodScale
+					: CHUNK_HEIGHT / lodScale;
+
+			std::vector<BlockTypeId> mask(uCells * vCells, BlockTypeId::AIR);
+
+			for (int slice = 0; slice < sliceCells; slice++)
+			{
+				std::fill(mask.begin(), mask.end(), BlockTypeId::AIR);
+
+				for (int v = 0; v < vCells; v++)
+				{
+					for (int u = 0; u < uCells; u++)
+					{
+						BlockPos blockPos;
+						switch (dir)
+						{
+						case g::Direction::FRONT:
+						case g::Direction::BACK:
+							blockPos = { u * lodScale, v * lodScale, slice * lodScale };
+							break;
+						case g::Direction::RIGHT:
+						case g::Direction::LEFT:
+							blockPos = { slice * lodScale, v * lodScale, u * lodScale };
+							break;
+						case g::Direction::TOP:
+						case g::Direction::BOTTOM:
+							blockPos = { u * lodScale, slice * lodScale, v * lodScale };
+							break;
+						default:
+							blockPos = {};
+							break;
+						}
+
+						BlockTypeId blockTypeId = getRepresentativeBlockType(blockPos, lodScale);
+						if (!isSolid(blockTypeId))
+						{
+							continue;
+						}
+
+						bool visible = lodScale == 1
+							? isFaceVisible(blockTypeId, Face{ blockPos, dir }, chunkManager)
+							: isLodFaceVisible(blockTypeId, Face{ blockPos, dir }, lodScale, chunkManager);
+						if (visible)
+						{
+							mask[u + v * uCells] = blockTypeId;
+						}
+					}
+				}
+
+				for (int v = 0; v < vCells; v++)
+				{
+					for (int u = 0; u < uCells;)
+					{
+						BlockTypeId blockTypeId = mask[u + v * uCells];
+						if (blockTypeId == BlockTypeId::AIR)
+						{
+							u++;
+							continue;
+						}
+
+						int width = 1;
+						while (u + width < uCells && mask[u + width + v * uCells] == blockTypeId)
+						{
+							width++;
+						}
+
+						int height = 1;
+						bool canGrow = true;
+						while (v + height < vCells && canGrow)
+						{
+							for (int x = 0; x < width; x++)
+							{
+								if (mask[u + x + (v + height) * uCells] != blockTypeId)
+								{
+									canGrow = false;
+									break;
+								}
+							}
+
+							if (canGrow)
+							{
+								height++;
+							}
+						}
+
+						BlockPos blockPos;
+						switch (dir)
+						{
+						case g::Direction::FRONT:
+						case g::Direction::BACK:
+							blockPos = { u * lodScale, v * lodScale, slice * lodScale };
+							break;
+						case g::Direction::RIGHT:
+						case g::Direction::LEFT:
+							blockPos = { slice * lodScale, v * lodScale, u * lodScale };
+							break;
+						case g::Direction::TOP:
+						case g::Direction::BOTTOM:
+							blockPos = { u * lodScale, slice * lodScale, v * lodScale };
+							break;
+						default:
+							blockPos = {};
+							break;
+						}
+
+						addGreedyFaceToMesh(blockTypeId, dir, blockPos, width, height, lodScale, vertices, indices);
+
+						for (int y = 0; y < height; y++)
+						{
+							for (int x = 0; x < width; x++)
+							{
+								mask[u + x + (v + y) * uCells] = BlockTypeId::AIR;
+							}
+						}
+
+						u += width;
+					}
+				}
+			}
+		}
+	}
+
+	void Chunk::buildTransparentMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
+	{
 		for (int z = 0; z < CHUNK_SIZE; z += lodScale)
 		{
 			for (int y = 0; y < CHUNK_HEIGHT; y += lodScale)
@@ -141,7 +283,7 @@ namespace voxel_game::world
 					glm::vec3 blockPosVec = toVec3(blockPos);
 					BlockTypeId blockTypeId = getRepresentativeBlockType(blockPos, lodScale);
 
-					if (blockTypeId == BlockTypeId::AIR)
+					if (blockTypeId != BlockTypeId::WATER)
 					{
 						continue;
 					}
@@ -170,14 +312,37 @@ namespace voxel_game::world
 						{
 							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, transparentVertices, transparentIndices, meshScale);
 						}
-						else
-						{
-							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, vertices, indices, meshScale);
-						}
 					}
 				}
 			}
 		}
+	}
+
+	void Chunk::addGreedyFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos blockPos, int width, int height, int lodScale, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
+	{
+		glm::vec3 scale(lodScale);
+		switch (direction)
+		{
+		case g::Direction::FRONT:
+		case g::Direction::BACK:
+			scale.x = width * lodScale;
+			scale.y = height * lodScale;
+			break;
+		case g::Direction::RIGHT:
+		case g::Direction::LEFT:
+			scale.z = width * lodScale;
+			scale.y = height * lodScale;
+			break;
+		case g::Direction::TOP:
+		case g::Direction::BOTTOM:
+			scale.x = width * lodScale;
+			scale.z = height * lodScale;
+			break;
+		default:
+			break;
+		}
+
+		addFaceToMesh(blockTypeId, direction, blockPos + m_origin, toVec3(blockPos), vertices, indices, scale);
 	}
 
 	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale)
@@ -189,8 +354,25 @@ namespace voxel_game::world
 
 		int vertexPositionIndex = g::Quad::vertexPositionIndexMap.at(direction);
 		int uvIndex = g::Quad::uvIndexMap.at(direction);
-		glm::vec2 atlasCoords = g::getTextureAtlasCoords(getTextureForFace(blockTypeId, direction));
-		float textureSize = g::getTextureAtlasTextureSize();
+		glm::vec2 atlasTileCoords = g::getTextureAtlasTileCoords(getTextureForFace(blockTypeId, direction));
+		glm::vec2 uvRepeat(1.f);
+		switch (direction)
+		{
+		case g::Direction::FRONT:
+		case g::Direction::BACK:
+			uvRepeat = glm::vec2(scale.x, scale.y);
+			break;
+		case g::Direction::RIGHT:
+		case g::Direction::LEFT:
+			uvRepeat = glm::vec2(scale.z, scale.y);
+			break;
+		case g::Direction::TOP:
+		case g::Direction::BOTTOM:
+			uvRepeat = glm::vec2(scale.x, scale.z);
+			break;
+		default:
+			break;
+		}
 
 		for (int j = 0; j < g::Quad::vertexCount; j++)
 		{
@@ -200,8 +382,8 @@ namespace voxel_game::world
 				g::Quad::vertexPositions[vertexPositionIndex + j * 3 + 2]
 			);
 			glm::vec2 uv = glm::vec2(
-				g::Quad::uvs[uvIndex + j * 2] * textureSize + atlasCoords.x,
-				g::Quad::uvs[uvIndex + j * 2 + 1] * textureSize + atlasCoords.y
+				g::Quad::uvs[uvIndex + j * 2] * uvRepeat.x,
+				g::Quad::uvs[uvIndex + j * 2 + 1] * uvRepeat.y
 			);
 
 			vertices.push_back(g::Vertex(
@@ -210,7 +392,8 @@ namespace voxel_game::world
 				uv,
 				blockTypeId,
 				worldBlockPos,
-				true
+				true,
+				atlasTileCoords
 			));
 		}
 	}

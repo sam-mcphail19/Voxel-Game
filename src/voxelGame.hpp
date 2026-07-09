@@ -36,6 +36,7 @@ namespace voxel_game
 		std::chrono::time_point<std::chrono::steady_clock> m_lastTpsLogTime;
 		int m_minFps = INT_MAX;
 		int m_ticks = 0;
+		graphics::RenderStats m_renderStats = {};
 
 		Player* m_player;
 		world::World* m_world;
