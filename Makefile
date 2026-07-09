@@ -1,5 +1,21 @@
 # === Compiler and flags ===
-CXX := g++
+CXX ?= g++
+JOBS ?= $(shell nproc 2>/dev/null || echo $${NUMBER_OF_PROCESSORS:-4})
+USE_CCACHE ?= auto
+
+ifeq ($(filter -j% --jobs=%,$(MAKEFLAGS)),)
+MAKEFLAGS += -j$(JOBS)
+endif
+
+ifeq ($(USE_CCACHE),auto)
+CCACHE := $(shell command -v ccache 2>/dev/null)
+ifneq ($(CCACHE),)
+CXX := ccache $(CXX)
+endif
+else ifeq ($(USE_CCACHE),1)
+CXX := ccache $(CXX)
+endif
+
 # generate dependency files (-MMD -MP), keep other flags the same
 DEPFLAGS := -MMD -MP
 CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Isrc -DGLM_ENABLE_EXPERIMENTAL $(DEPFLAGS)

@@ -1,5 +1,7 @@
 #include "renderer.hpp"
 
+#include "../world/chunk.hpp"
+
 namespace voxel_game::graphics
 {
 	static const glm::mat4 orthoProjMat = glm::ortho(-1, 1, -1, 1, -1, 1);

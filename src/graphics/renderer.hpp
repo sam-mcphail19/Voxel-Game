@@ -10,8 +10,6 @@
 #include "frustum.hpp"
 #include "uiRenderer.hpp"
 #include "window.hpp"
-#include "../world/chunk.hpp"
-#include "../world/world.hpp"
 #include "../util/log.hpp"
 #include "../util/timeUtils.hpp"
 
@@ -19,6 +17,8 @@
 
 namespace voxel_game::graphics
 {
+	namespace world = voxel_game::world;
+
 	struct RenderStats
 	{
 		int vertexCount = 0;

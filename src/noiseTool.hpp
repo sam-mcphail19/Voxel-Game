@@ -4,6 +4,7 @@
 #include <map>
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
+#include "world/biomeBasedWorldGenerator.hpp"
 #include "world/block.hpp"
 #include "world/splineBasedWorldGenerator.hpp"
 #include "util/log.hpp"

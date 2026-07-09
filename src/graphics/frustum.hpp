@@ -1,11 +1,18 @@
 #pragma once
 
 #include <array>
-#include <glm/geometric.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
-#include "camera.hpp"
-#include "../world/chunk.hpp"
+
+namespace voxel_game::world
+{
+	class Chunk;
+}
+
+namespace voxel_game::graphics
+{
+	class Camera;
+}
 
 namespace voxel_game::graphics
 {

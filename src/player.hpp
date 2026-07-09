@@ -5,8 +5,12 @@
 #include "input/input.hpp"
 #include "graphics/camera.hpp"
 #include "util/mathUtils.hpp"
-#include "world/chunk.hpp"
 #include "constants.hpp"
+
+namespace voxel_game::world
+{
+	class Chunk;
+}
 
 namespace voxel_game
 {

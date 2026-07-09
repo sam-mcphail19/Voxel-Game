@@ -1,5 +1,7 @@
 #include "player.hpp"
 
+#include "world/chunk.hpp"
+
 namespace voxel_game
 {
 	const glm::vec3 up(0, 1, 0);
