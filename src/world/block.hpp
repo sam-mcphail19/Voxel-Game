@@ -110,4 +110,14 @@ namespace voxel_game::world
 	{
 		return str + "Block(pos=" + block.pos + ", type=" + toString(block.type) + ")";
 	}
+
+	inline bool isSolid(BlockTypeId blockType)
+	{
+		return blockType != BlockTypeId::NONE && blockType != BlockTypeId::AIR && blockType != BlockTypeId::WATER;
+	}
+
+	inline bool isTransparent(BlockTypeId blockType)
+	{
+		return blockType == BlockTypeId::NONE || blockType == BlockTypeId::AIR || blockType == BlockTypeId::WATER;
+	}
 }

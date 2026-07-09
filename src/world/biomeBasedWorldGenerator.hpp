@@ -32,7 +32,9 @@ namespace voxel_game::world
 		ThreadSafeMap<int, std::unordered_map<int, int>> m_heightMap;
 
 		float calculateNoise(int x, int z);
-		int calculateHeight(int x, int y);
+		int calculateHeight(int x, int z);
+		int calculateHeight(std::vector<BiomeWeight>& normalizedWeights, int x, int z);
+		const Biome* getDominantBiome(std::vector<BiomeWeight>& weights);
 
 	public:
 		BiomeBasedWorldGenerator(long seed);
@@ -44,7 +46,7 @@ namespace voxel_game::world
 
 		std::vector<BiomeWeight> buildWeights(int x, int z);
 		std::vector<BiomeWeight> normalizeWeights(std::vector<BiomeWeight> weights);
-		int getHeight(int x, int y);
+		int getHeight(int x, int z);
 		BlockTypeId getBlockType(BlockPos pos);
 		void generateChunkData(Chunk &chunk);
 	};

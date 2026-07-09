@@ -115,12 +115,22 @@ namespace voxel_game::world
 	{
 		auto biomeWeights = buildWeights(x, z);
 		biomeWeights = normalizeWeights(biomeWeights);
+		return calculateHeight(biomeWeights, x, z);
+	}
+
+	int BiomeBasedWorldGenerator::calculateHeight(std::vector<BiomeWeight>& normalizedWeights, int x, int z)
+	{
 		float totalHeight = 0.f;
-		for (auto &biomeWeight : biomeWeights)
+		for (auto &biomeWeight : normalizedWeights)
 		{
 			totalHeight += biomeWeight.weight * biomeWeight.biome->getHeight(x, z, m_noiseGenerator);
 		}
 		return static_cast<int>(totalHeight);
+	}
+
+	const Biome* BiomeBasedWorldGenerator::getDominantBiome(std::vector<BiomeWeight>& weights)
+	{
+		return std::max_element(weights.begin(), weights.end())->biome;
 	}
 
 	int BiomeBasedWorldGenerator::getHeight(int x, int z)
@@ -147,24 +157,41 @@ namespace voxel_game::world
 
 		auto weights = buildWeights(x, z);
 
-		return std::max_element(weights.begin(), weights.end())->biome->blockFunc(x, y, z, height);
+		return getDominantBiome(weights)->blockFunc(x, y, z, height);
 	}
 
 	void BiomeBasedWorldGenerator::generateChunkData(Chunk &chunk)
 	{
-		auto start = std::chrono::system_clock::now();
 		auto origin = chunk.getOrigin();
 
-		for (int i = 0; i < CHUNK_BLOCK_COUNT; ++i)
+		for (int x = 0; x < CHUNK_SIZE; x++)
 		{
-			BlockPos local = to3dIndex(i);
-			BlockPos world = origin + local;
-			chunk.putBlock(Block{local, getBlockType(world)});
-		}
+			for (int z = 0; z < CHUNK_SIZE; z++)
+			{
+				int worldX = origin.x + x;
+				int worldZ = origin.z + z;
+				auto weights = buildWeights(worldX, worldZ);
+				const Biome* dominantBiome = getDominantBiome(weights);
+				weights = normalizeWeights(weights);
+				int height = calculateHeight(weights, worldX, worldZ);
 
-		auto end = std::chrono::system_clock::now();
-		auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-		log::info("Generating chunk data took " + std::to_string(ms) + "ms");
+				for (int y = 0; y < CHUNK_HEIGHT; y++)
+				{
+					int worldY = origin.y + y;
+					BlockTypeId blockTypeId;
+					if (worldY > height)
+					{
+						blockTypeId = worldY <= WATER_HEIGHT ? BlockTypeId::WATER : BlockTypeId::AIR;
+					}
+					else
+					{
+						blockTypeId = dominantBiome->blockFunc(worldX, worldY, worldZ, height);
+					}
+
+					chunk.putBlock(Block{ BlockPos{ x, y, z }, blockTypeId });
+				}
+			}
+		}
 	}
 
 }

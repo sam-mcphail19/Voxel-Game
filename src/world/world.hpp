@@ -55,13 +55,17 @@ namespace voxel_game::world
 		RaycastResult raycast(const glm::vec3 startPos, const glm::vec3 rayDir, int maxDist, int iterationsPerBlock);
 
 		void updateChunkMesh(Chunk* chunk);
+		void updateChunkMesh(Chunk* chunk, ChunkLod lod);
 		void updateChunkMeshAsync(Chunk* chunk);
+		void updateChunkMeshAsync(Chunk* chunk, ChunkLod lod);
 		void generateChunk(BlockPos chunkCoord);
 		void generateChunkAsync(BlockPos chunkCoord);
 
 		std::vector<BlockPos> getChunksToGenerate();
 		bool allChunksGenerated();
 
+		ChunkLod getChunkLodForPlayer(Chunk* chunk, const Player& player);
+		void queueVisibleChunkLodBuild(Chunk* chunk);
 		bool chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player);
 
 	public:

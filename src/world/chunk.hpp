@@ -9,9 +9,11 @@
 #include <glm/vec3.hpp>
 #include "block.hpp"
 #include "chunkManager.hpp"
-#include "cube.hpp"
 #include "../constants.hpp"
 #include "../graphics/mesh.hpp"
+#include "../graphics/quad.hpp"
+
+namespace g = voxel_game::graphics;
 
 namespace voxel_game::world
 {
@@ -37,6 +39,7 @@ namespace voxel_game::world
 		BlockTypeId* m_blocks;
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_meshes = {};
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_transparentMeshes = {};
+		std::array<bool, CHUNK_LOD_LEVEL_COUNT> m_lodBuildQueued = {};
 		std::mutex m_mutex;
 
 		bool isBlockInBounds(const BlockPos& blockPos) const;
@@ -48,17 +51,20 @@ namespace voxel_game::world
 		BlockTypeId getBlockForLodOcclusion(BlockPos blockPos, ChunkManager& chunkManager);
 		void buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
 
-		void addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f));
+		void addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f));
 
 	public:
 		Chunk(BlockPos chunkCoord, World* world);
 		void updateMesh(ChunkManager& chunkManager);
+		void updateMesh(ChunkManager& chunkManager, ChunkLod lod);
 		void putBlock(Block block);
 		BlockTypeId getBlock(int x, int y, int z);
 		BlockTypeId getBlock(BlockPos blockPos);
 		BlockPos getOrigin() const;
 		BlockPos getChunkCoord();
 		std::unique_lock<std::mutex> acquireLock();
+		bool hasMesh(ChunkLod lod);
+		bool tryQueueMeshBuild(ChunkLod lod);
 		std::shared_ptr<g::Mesh> getMesh();
 		std::shared_ptr<g::Mesh> getMesh(ChunkLod lod);
 		std::shared_ptr<g::Mesh> getTransparentMesh();

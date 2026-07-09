@@ -61,13 +61,4 @@ namespace voxel_game::world
 		}
 	};
 
-	inline bool isSolid(BlockTypeId blockType)
-	{
-		return blockType != BlockTypeId::NONE && blockType != BlockTypeId::AIR && blockType != BlockTypeId::WATER;
-	}
-
-	inline bool isTransparent(BlockTypeId blockType)
-	{
-		return blockType == BlockTypeId::NONE || blockType == BlockTypeId::AIR || blockType == BlockTypeId::WATER;
-	}
 }

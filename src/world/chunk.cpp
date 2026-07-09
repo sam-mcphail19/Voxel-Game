@@ -5,10 +5,18 @@ namespace voxel_game::world
 	namespace
 	{
 		const std::array<int, CHUNK_LOD_LEVEL_COUNT> lodScales = { 1, 2, 4 };
+		const std::array<const char*, CHUNK_LOD_LEVEL_COUNT> lodNames = { "full", "half", "quarter" };
 
 		int toLodIndex(ChunkLod lod)
 		{
 			return static_cast<int>(lod);
+		}
+
+		long long elapsedMs(std::chrono::system_clock::time_point start)
+		{
+			return std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::system_clock::now() - start
+			).count();
 		}
 
 		bool shouldDrawAgainstNeighbour(BlockTypeId blockTypeId, BlockTypeId neighbour)
@@ -20,6 +28,43 @@ namespace voxel_game::world
 
 			return isTransparent(neighbour);
 		}
+
+		g::AtlasTexture getTextureForFace(BlockTypeId blockTypeId, g::Direction direction)
+		{
+			switch (blockTypeId)
+			{
+			case BlockTypeId::WATER:
+				return g::AtlasTexture::WATER;
+			case BlockTypeId::STONE:
+				return g::AtlasTexture::STONE;
+			case BlockTypeId::DIRT:
+				return g::AtlasTexture::DIRT;
+			case BlockTypeId::GRASS:
+				if (direction == g::Direction::TOP)
+				{
+					return g::AtlasTexture::GRASS;
+				}
+				if (direction == g::Direction::BOTTOM)
+				{
+					return g::AtlasTexture::DIRT;
+				}
+				return g::AtlasTexture::GRASS_SIDE;
+			case BlockTypeId::BEDROCK:
+				return g::AtlasTexture::BEDROCK;
+			case BlockTypeId::SAND:
+				return g::AtlasTexture::SAND;
+			case BlockTypeId::GRAVEL:
+				return g::AtlasTexture::GRAVEL;
+			case BlockTypeId::SANDSTONE:
+				if (direction == g::Direction::TOP || direction == g::Direction::BOTTOM)
+				{
+					return g::AtlasTexture::SANDSTONE;
+				}
+				return g::AtlasTexture::SANDSTONE_SIDE;
+			default:
+				return g::AtlasTexture::STONE;
+			}
+		}
 	}
 
 	Chunk::Chunk(BlockPos chunkCoord, World* world)
@@ -30,114 +75,143 @@ namespace voxel_game::world
 
 	void Chunk::updateMesh(ChunkManager& chunkManager)
 	{
-		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> newMeshes;
-		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> newTransparentMeshes;
+		updateMesh(chunkManager, ChunkLod::FULL);
+	}
 
-		for (int lod = 0; lod < CHUNK_LOD_LEVEL_COUNT; lod++)
+	void Chunk::updateMesh(ChunkManager& chunkManager, ChunkLod lod)
+	{
+		auto totalStart = std::chrono::system_clock::now();
+		int lodIndex = toLodIndex(lod);
+		std::shared_ptr<g::Mesh> newMesh;
+		std::shared_ptr<g::Mesh> newTransparentMesh;
+
 		{
+			auto lodStart = std::chrono::system_clock::now();
 			std::vector<g::Vertex> vertices;
 			std::vector<g::Vertex> transparentVertices;
 			std::vector<GLuint> indices;
 			std::vector<GLuint> transparentIndices;
 
-			buildMeshForLod(lodScales[lod], chunkManager, vertices, indices, transparentVertices, transparentIndices);
+			auto faceBuildStart = std::chrono::system_clock::now();
+			buildMeshForLod(lodScales[lodIndex], chunkManager, vertices, indices, transparentVertices, transparentIndices);
+			long long faceBuildMs = elapsedMs(faceBuildStart);
 
-			newMeshes[lod] = std::make_shared<graphics::Mesh>(vertices, indices, nullptr, g::loadTextureAtlas());
-			newTransparentMeshes[lod] = std::make_shared<graphics::Mesh>(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
+			auto meshCreateStart = std::chrono::system_clock::now();
+			newMesh = std::make_shared<graphics::Mesh>(vertices, indices, nullptr, g::loadTextureAtlas());
+			newTransparentMesh = std::make_shared<graphics::Mesh>(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
+			long long meshCreateMs = elapsedMs(meshCreateStart);
+
+			log::info("Chunk " + getChunkCoord() +
+				" LoD " + lodNames[lodIndex] +
+				" mesh profile: faceBuild=" + std::to_string(faceBuildMs) + "ms" +
+				", meshCreate=" + std::to_string(meshCreateMs) + "ms" +
+				", opaqueVerts=" + std::to_string(vertices.size()) +
+				", transparentVerts=" + std::to_string(transparentVertices.size()) +
+				", indices=" + std::to_string(indices.size() + transparentIndices.size()) +
+				", total=" + std::to_string(elapsedMs(lodStart)) + "ms"
+			);
 		}
 
 		{
 			std::unique_lock<std::mutex> lock = acquireLock();
-			m_meshes = std::move(newMeshes);
-			m_transparentMeshes = std::move(newTransparentMeshes);
+			if (lod == ChunkLod::FULL)
+			{
+				m_meshes.fill(nullptr);
+				m_transparentMeshes.fill(nullptr);
+				m_lodBuildQueued.fill(false);
+			}
+			m_meshes[lodIndex] = std::move(newMesh);
+			m_transparentMeshes[lodIndex] = std::move(newTransparentMesh);
+			m_lodBuildQueued[lodIndex] = false;
 		}
+
+		(void)totalStart;
 	}
 
 	void Chunk::buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
 	{
-		for (int i = 0; i < CHUNK_BLOCK_COUNT; i++)
+		for (int z = 0; z < CHUNK_SIZE; z += lodScale)
 		{
-			BlockPos blockPos = to3dIndex(i);
-			if (blockPos.x % lodScale != 0 || blockPos.y % lodScale != 0 || blockPos.z % lodScale != 0)
+			for (int y = 0; y < CHUNK_HEIGHT; y += lodScale)
 			{
-				continue;
-			}
-
-			glm::vec3 blockPosVec = toVec3(blockPos);
-			BlockTypeId blockTypeId = getRepresentativeBlockType(blockPos, lodScale);
-
-			if (blockTypeId == BlockTypeId::AIR)
-			{
-				continue;
-			}
-
-			bool anyFaceVisible = false;
-			for (int i = 0; i < 6; i++)
-			{
-				g::Direction dir = (g::Direction)i;
-				if (lodScale == 1
-					? isFaceVisible(blockTypeId, Face{ blockPos, dir }, chunkManager)
-					: isLodFaceVisible(blockTypeId, Face{ blockPos, dir }, lodScale, chunkManager))
+				for (int x = 0; x < CHUNK_SIZE; x += lodScale)
 				{
-					anyFaceVisible = true;
-					break;
-				}
-			}
+					BlockPos blockPos = { x, y, z };
 
-			if (!anyFaceVisible)
-			{
-				continue;
-			}
+					glm::vec3 blockPosVec = toVec3(blockPos);
+					BlockTypeId blockTypeId = getRepresentativeBlockType(blockPos, lodScale);
 
-			BlockPos renderBlockPos = blockPos;
-			glm::vec3 meshScale(lodScale);
-			if (blockTypeId == BlockTypeId::WATER && lodScale > 1)
-			{
-				renderBlockPos.y = getHighestWaterY(blockPos, lodScale);
-				meshScale.y = 1.f;
-				blockPosVec = toVec3(renderBlockPos);
-			}
+					if (blockTypeId == BlockTypeId::AIR)
+					{
+						continue;
+					}
 
-			const BlockType& blockType = BlockType::get(blockTypeId);
-			Cube cube = blockType.getMeshConstructor()(Block{ renderBlockPos + m_origin, blockTypeId });
+					BlockPos renderBlockPos = blockPos;
+					glm::vec3 meshScale(lodScale);
+					if (blockTypeId == BlockTypeId::WATER && lodScale > 1)
+					{
+						renderBlockPos.y = getHighestWaterY(blockPos, lodScale);
+						meshScale.y = 1.f;
+						blockPosVec = toVec3(renderBlockPos);
+					}
 
-			for (int i = 0; i < 6; i++)
-			{
-				g::Direction dir = (g::Direction)i;
+					for (int i = 0; i < 6; i++)
+					{
+						g::Direction dir = (g::Direction)i;
 
-				if (!(lodScale == 1
-					? isFaceVisible(blockTypeId, Face{ blockPos, dir }, chunkManager)
-					: isLodFaceVisible(blockTypeId, Face{ blockPos, dir }, lodScale, chunkManager)))
-				{
-					continue;
-				}
+						if (!(lodScale == 1
+							? isFaceVisible(blockTypeId, Face{ blockPos, dir }, chunkManager)
+							: isLodFaceVisible(blockTypeId, Face{ blockPos, dir }, lodScale, chunkManager)))
+						{
+							continue;
+						}
 
-				g::Quad* face = cube.getFace(dir);
-
-				if (blockTypeId == BlockTypeId::WATER)
-				{
-					addFaceToMesh(face, blockPosVec, transparentVertices, transparentIndices, meshScale);
-				}
-				else
-				{
-					addFaceToMesh(face, blockPosVec, vertices, indices, meshScale);
+						if (blockTypeId == BlockTypeId::WATER)
+						{
+							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, transparentVertices, transparentIndices, meshScale);
+						}
+						else
+						{
+							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, vertices, indices, meshScale);
+						}
+					}
 				}
 			}
 		}
 	}
 
-	void Chunk::addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale)
+	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale)
 	{
 		for (int j = 0; j < g::Quad::indexCount; j++)
 		{
 			indices.push_back(g::Quad::indices[j] + vertices.size());
 		}
-		std::vector<g::Vertex> faceVertices = *face->getVertices();
+
+		int vertexPositionIndex = g::Quad::vertexPositionIndexMap.at(direction);
+		int uvIndex = g::Quad::uvIndexMap.at(direction);
+		glm::vec2 atlasCoords = g::getTextureAtlasCoords(getTextureForFace(blockTypeId, direction));
+		float textureSize = g::getTextureAtlasTextureSize();
+
 		for (int j = 0; j < g::Quad::vertexCount; j++)
 		{
-			g::Vertex vert = faceVertices[j];
-			vert.m_position = blockPos + vert.m_position * scale;
-			vertices.push_back(vert);
+			glm::vec3 vertexPos = glm::vec3(
+				g::Quad::vertexPositions[vertexPositionIndex + j * 3],
+				g::Quad::vertexPositions[vertexPositionIndex + j * 3 + 1],
+				g::Quad::vertexPositions[vertexPositionIndex + j * 3 + 2]
+			);
+			glm::vec2 uv = glm::vec2(
+				g::Quad::uvs[uvIndex + j * 2] * textureSize + atlasCoords.x,
+				g::Quad::uvs[uvIndex + j * 2 + 1] * textureSize + atlasCoords.y
+			);
+
+			vertices.push_back(g::Vertex(
+				blockPos + vertexPos * scale,
+				g::getNormal(direction),
+				uv,
+				blockTypeId,
+				worldBlockPos,
+				true
+			));
 		}
 	}
 
@@ -176,9 +250,27 @@ namespace voxel_game::world
 		return getMesh(ChunkLod::FULL);
 	}
 
+	bool Chunk::hasMesh(ChunkLod lod)
+	{
+		return m_meshes[toLodIndex(lod)] != nullptr;
+	}
+
+	bool Chunk::tryQueueMeshBuild(ChunkLod lod)
+	{
+		int lodIndex = toLodIndex(lod);
+		if (lod == ChunkLod::FULL || m_meshes[lodIndex] != nullptr || m_lodBuildQueued[lodIndex])
+		{
+			return false;
+		}
+
+		m_lodBuildQueued[lodIndex] = true;
+		return true;
+	}
+
 	std::shared_ptr<g::Mesh> Chunk::getMesh(ChunkLod lod)
 	{
-		return m_meshes[toLodIndex(lod)];
+		std::shared_ptr<g::Mesh> mesh = m_meshes[toLodIndex(lod)];
+		return mesh ? mesh : m_meshes[toLodIndex(ChunkLod::FULL)];
 	}
 
 	std::shared_ptr<g::Mesh> Chunk::getTransparentMesh()
@@ -188,7 +280,8 @@ namespace voxel_game::world
 
 	std::shared_ptr<g::Mesh> Chunk::getTransparentMesh(ChunkLod lod)
 	{
-		return m_transparentMeshes[toLodIndex(lod)];
+		std::shared_ptr<g::Mesh> mesh = m_transparentMeshes[toLodIndex(lod)];
+		return mesh ? mesh : m_transparentMeshes[toLodIndex(ChunkLod::FULL)];
 	}
 
 	int to1dIndex(int x, int y, int z)
