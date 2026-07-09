@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
@@ -20,21 +22,33 @@ namespace voxel_game::world
 		g::Direction dir;
 	};
 
+	enum class ChunkLod
+	{
+		FULL = 0,
+		HALF = 1,
+		QUARTER = 2,
+	};
+
 	class Chunk
 	{
 	private:
 		BlockPos m_origin;
 		World* m_world;
 		BlockTypeId* m_blocks;
-		std::shared_ptr<g::Mesh> m_mesh = nullptr;
-		std::shared_ptr<g::Mesh> m_transparentMesh = nullptr;
+		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_meshes = {};
+		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_transparentMeshes = {};
 		std::mutex m_mutex;
 
 		bool isBlockInBounds(const BlockPos& blockPos) const;
 		bool isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager);
+		bool isLodFaceVisible(const BlockTypeId& blockTypeId, const Face& face, int lodScale, ChunkManager& chunkManager);
 		Chunk* getNeighbourChunk(graphics::Direction direction, ChunkManager& chunkManager);
+		BlockTypeId getRepresentativeBlockType(BlockPos blockPos, int lodScale);
+		int getHighestWaterY(BlockPos blockPos, int lodScale);
+		BlockTypeId getBlockForLodOcclusion(BlockPos blockPos, ChunkManager& chunkManager);
+		void buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
 
-		void addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
+		void addFaceToMesh(g::Quad* face, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f));
 
 	public:
 		Chunk(BlockPos chunkCoord, World* world);
@@ -46,7 +60,9 @@ namespace voxel_game::world
 		BlockPos getChunkCoord();
 		std::unique_lock<std::mutex> acquireLock();
 		std::shared_ptr<g::Mesh> getMesh();
+		std::shared_ptr<g::Mesh> getMesh(ChunkLod lod);
 		std::shared_ptr<g::Mesh> getTransparentMesh();
+		std::shared_ptr<g::Mesh> getTransparentMesh(ChunkLod lod);
 	};
 
 	int to1dIndex(int x, int y, int z);

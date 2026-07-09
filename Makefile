@@ -3,12 +3,14 @@ CXX := g++
 # generate dependency files (-MMD -MP), keep other flags the same
 DEPFLAGS := -MMD -MP
 CXXFLAGS := -std=c++20 -O2 -g -Wall -Wextra -Isrc -DGLM_ENABLE_EXPERIMENTAL $(DEPFLAGS)
-LDFLAGS := -L/mingw64/lib
+MINGW_PREFIX ?= /mingw64
+MSYSTEM ?= native
+LDFLAGS := -L$(MINGW_PREFIX)/lib
 
 # === Source layout ===
 SRC_DIR := src
-OBJ_DIR := obj
-BIN_DIR := bin
+OBJ_DIR := obj/$(MSYSTEM)
+BIN_DIR := bin/$(MSYSTEM)
 TARGET := $(BIN_DIR)/voxel-game
 
 # === Find source files ===
@@ -28,7 +30,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)

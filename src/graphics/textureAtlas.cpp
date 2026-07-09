@@ -7,7 +7,7 @@ namespace voxel_game::graphics
 
 	void createTextureAtlas()
 	{
-		std::vector<std::filesystem::path> paths = voxel_game::utils::walkPath("res/texture/texture_atlas");
+		std::vector<std::string> paths = voxel_game::utils::walkPath("res/texture/texture_atlas");
 
 		texturesPerRow = static_cast<int>(std::ceil(std::sqrt(paths.size())));
 		const int width = texturesPerRow * ATLAS_TEXTURE_SIZE;
@@ -18,10 +18,10 @@ namespace voxel_game::graphics
 		stbi_set_flip_vertically_on_load(0);
 
 		int x = 0, y = 0;
-		for (std::filesystem::path path : paths)
+		for (std::string path : paths)
 		{
 			int newWidth, newHeight, bitsPerPixel;
-			unsigned char *image = stbi_load(path.string().c_str(), &newWidth, &newHeight, &bitsPerPixel, 4);
+			unsigned char *image = stbi_load(path.c_str(), &newWidth, &newHeight, &bitsPerPixel, 4);
 
 			for (int j = 0; j < newHeight; ++j)
 			{
@@ -41,7 +41,7 @@ namespace voxel_game::graphics
 			float texY = 1 - (float)y / height - ATLAS_TEXTURE_SIZE / (float) height;
 			textureAtlasMap[voxel_game::utils::getFileName(path)] = glm::vec2{texX, texY};
 
-			log::info("Added " + path.string() + " to position: (" + std::to_string(texX) + "," + std::to_string(texY) + ")");
+			log::info("Added " + path + " to position: (" + std::to_string(texX) + "," + std::to_string(texY) + ")");
 
 			x += ATLAS_TEXTURE_SIZE;
 			if (x >= width)

@@ -1,5 +1,8 @@
 #include "fileUtils.hpp"
 
+#include <dirent.h>
+#include <sys/stat.h>
+
 namespace voxel_game::utils
 {
 	std::string read_file(std::string filepath)
@@ -23,19 +26,47 @@ namespace voxel_game::utils
 		return std::string(buffer.data(), buffer.size());
 	}
 
-	std::vector<std::filesystem::path> walkPath(std::string path)
+	std::vector<std::string> walkPath(std::string path)
 	{
-		std::vector<std::filesystem::path> paths;
-		for (const auto& entry : std::filesystem::directory_iterator(path)) {
-			if (entry.is_regular_file()) {
-            	paths.push_back(entry.path());
+		std::vector<std::string> paths;
+		DIR* dir = opendir(path.c_str());
+		if (dir == nullptr)
+		{
+			perror("opendir");
+			return paths;
+		}
+
+		dirent* entry;
+		while ((entry = readdir(dir)) != nullptr)
+		{
+			std::string name = entry->d_name;
+			if (name == "." || name == "..")
+			{
+				continue;
+			}
+
+			std::string fullPath = path + "/" + name;
+			struct stat statBuf;
+			if (stat(fullPath.c_str(), &statBuf) == 0 && S_ISREG(statBuf.st_mode))
+			{
+				paths.push_back(fullPath);
 			}
 		}
+
+		closedir(dir);
 		return paths;
 	}
 
-	std::string getFileName(std::filesystem::path path)
+	std::string getFileName(std::string path)
 	{
-		return path.stem().string();
+		size_t slashPos = path.find_last_of("/\\");
+		size_t nameStart = slashPos == std::string::npos ? 0 : slashPos + 1;
+		size_t dotPos = path.find_last_of('.');
+		if (dotPos == std::string::npos || dotPos < nameStart)
+		{
+			dotPos = path.size();
+		}
+
+		return path.substr(nameStart, dotPos - nameStart);
 	}
 }

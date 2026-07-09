@@ -15,6 +15,8 @@ namespace voxel_game::world
 	class WorldGenerator
 	{
 	public:
+		~WorldGenerator() noexcept = default;
+
 		virtual int getHeight(int x, int z);
 		virtual BlockTypeId getBlockType(BlockPos pos);
 		virtual void generateChunkData(Chunk& chunk);

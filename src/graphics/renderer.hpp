@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <vector>
 #include "mesh.hpp"
