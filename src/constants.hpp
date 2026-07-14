@@ -15,8 +15,8 @@ inline constexpr int CHUNK_HEIGHT = 256;
 inline constexpr int CHUNK_SIZE_TIMES_HEIGHT = CHUNK_SIZE * CHUNK_HEIGHT;
 inline constexpr int CHUNK_BLOCK_COUNT = CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT;
 inline constexpr int CHUNK_LOD_LEVEL_COUNT = 3;
-inline constexpr int CHUNK_LOD_1_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 4;
-inline constexpr int CHUNK_LOD_2_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 8;
+inline constexpr int CHUNK_LOD_1_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 8;
+inline constexpr int CHUNK_LOD_2_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 16;
 
 inline constexpr float GRAVITY = 0.01f;
 inline constexpr float MOUSE_SENS = 0.24f;

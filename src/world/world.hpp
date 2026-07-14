@@ -68,6 +68,7 @@ namespace voxel_game::world
 		~World();
 		void generate();
 		DebugInfo update();
+		int uploadPendingMeshes();
 		std::vector<Chunk *> getVisibleChunks();
 		BlockTypeId getBlock(const BlockPos& blockPos);
 	};

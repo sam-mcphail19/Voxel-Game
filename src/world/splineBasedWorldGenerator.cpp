@@ -59,8 +59,6 @@ namespace voxel_game::world
 
 	void SplineBasedWorldGenerator::generateChunkData(Chunk& chunk)
 	{
-		const auto start = std::chrono::system_clock::now();
-
 		BlockPos origin = chunk.getOrigin();
 
 		for (int i = 0; i < CHUNK_BLOCK_COUNT; i++)
@@ -68,10 +66,6 @@ namespace voxel_game::world
 			BlockPos pos = to3dIndex(i);
 			chunk.putBlock(Block{ pos, getBlockType(origin + pos) });
 		}
-
-		const auto end = std::chrono::system_clock::now();
-		auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-		log::info("Generating chunk data took " + std::to_string(durationMs) + "ms");
 	}
 
 	BlockTypeId SplineBasedWorldGenerator::getBlockType(BlockPos pos)

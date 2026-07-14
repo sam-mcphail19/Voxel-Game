@@ -79,7 +79,9 @@ namespace voxel_game::graphics
 	public:
 		Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, physics::Transform *transform, Texture *texture);
 		~Mesh();
+		void upload();
 		void render();
+		bool isUploaded() const;
 		physics::Transform* getTransform();
 		std::vector<Vertex> getVertices();
 		std::vector<GLuint> getIndices();

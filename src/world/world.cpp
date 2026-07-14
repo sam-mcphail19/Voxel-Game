@@ -3,16 +3,6 @@
 
 namespace voxel_game::world
 {
-	namespace
-	{
-		long long elapsedMs(std::chrono::system_clock::time_point start)
-		{
-			return std::chrono::duration_cast<std::chrono::milliseconds>(
-				std::chrono::system_clock::now() - start
-			).count();
-		}
-	}
-
 	World::World(long seed, g::Shader* shader, Player& player)
 		: m_seed(seed), m_chunkManager(ChunkManager()), m_worldGenerator(BiomeBasedWorldGenerator(seed)), m_threadPool(utils::ThreadPool()), m_shader(shader), m_player(player)
 	{
@@ -166,6 +156,22 @@ namespace voxel_game::world
 		);
 
 		return visibleChunks;
+	}
+
+	int World::uploadPendingMeshes()
+	{
+		int uploads = 0;
+		for (Chunk* chunk : m_chunkManager.getChunks())
+		{
+			if (!chunk->hasPendingMeshUpload())
+			{
+				continue;
+			}
+
+			uploads += chunk->uploadPendingMeshes();
+		}
+
+		return uploads;
 	}
 
 	BlockTypeId World::getBlock(const BlockPos& blockPos)
@@ -323,13 +329,7 @@ namespace voxel_game::world
 
 	void World::updateChunkMesh(Chunk* chunk, ChunkLod lod)
 	{
-		const auto start = std::chrono::system_clock::now();
-
 		chunk->updateMesh(m_chunkManager, lod);
-
-		log::info("Chunk " + chunk->getChunkCoord() +
-			" updateMesh total=" + std::to_string(elapsedMs(start)) + "ms"
-		);
 	}
 
 	void World::updateChunkMeshAsync(Chunk* chunk)
@@ -348,26 +348,14 @@ namespace voxel_game::world
 
 	void World::generateChunk(BlockPos chunkCoord)
 	{
-		const auto totalStart = std::chrono::system_clock::now();
-
 		Chunk* chunk = new Chunk(chunkCoord, this);
 		BiomeBasedWorldGenerator* worldGenerator = new BiomeBasedWorldGenerator(m_seed);
-		const auto dataStart = std::chrono::system_clock::now();
 		worldGenerator->generateChunkData(*chunk);
-		long long dataMs = elapsedMs(dataStart);
 		delete worldGenerator;
 
 		m_chunkManager.putChunk(chunkCoord, chunk);
 
-		const auto meshStart = std::chrono::system_clock::now();
 		updateChunkMesh(chunk);
-		long long meshMs = elapsedMs(meshStart);
-
-		log::info("Chunk " + chunkCoord +
-			" generation profile: data=" + std::to_string(dataMs) + "ms" +
-			", mesh=" + std::to_string(meshMs) + "ms" +
-			", total=" + std::to_string(elapsedMs(totalStart)) + "ms"
-		);
 	}
 
 	void World::generateChunkAsync(BlockPos chunkCoord)

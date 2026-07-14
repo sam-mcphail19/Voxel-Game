@@ -5,18 +5,10 @@ namespace voxel_game::world
 	namespace
 	{
 		const std::array<int, CHUNK_LOD_LEVEL_COUNT> lodScales = { 1, 2, 4 };
-		const std::array<const char*, CHUNK_LOD_LEVEL_COUNT> lodNames = { "full", "half", "quarter" };
 
 		int toLodIndex(ChunkLod lod)
 		{
 			return static_cast<int>(lod);
-		}
-
-		long long elapsedMs(std::chrono::system_clock::time_point start)
-		{
-			return std::chrono::duration_cast<std::chrono::milliseconds>(
-				std::chrono::system_clock::now() - start
-			).count();
 		}
 
 		bool shouldDrawAgainstNeighbour(BlockTypeId blockTypeId, BlockTypeId neighbour)
@@ -80,52 +72,42 @@ namespace voxel_game::world
 
 	void Chunk::updateMesh(ChunkManager& chunkManager, ChunkLod lod)
 	{
-		auto totalStart = std::chrono::system_clock::now();
 		int lodIndex = toLodIndex(lod);
 		std::shared_ptr<g::Mesh> newMesh;
 		std::shared_ptr<g::Mesh> newTransparentMesh;
 
 		{
-			auto lodStart = std::chrono::system_clock::now();
 			std::vector<g::Vertex> vertices;
 			std::vector<g::Vertex> transparentVertices;
 			std::vector<GLuint> indices;
 			std::vector<GLuint> transparentIndices;
 
-			auto faceBuildStart = std::chrono::system_clock::now();
 			buildMeshForLod(lodScales[lodIndex], chunkManager, vertices, indices, transparentVertices, transparentIndices);
-			long long faceBuildMs = elapsedMs(faceBuildStart);
 
-			auto meshCreateStart = std::chrono::system_clock::now();
-			newMesh = std::make_shared<graphics::Mesh>(vertices, indices, nullptr, g::loadTextureAtlas());
-			newTransparentMesh = std::make_shared<graphics::Mesh>(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
-			long long meshCreateMs = elapsedMs(meshCreateStart);
-
-			log::info("Chunk " + getChunkCoord() +
-				" LoD " + lodNames[lodIndex] +
-				" mesh profile: faceBuild=" + std::to_string(faceBuildMs) + "ms" +
-				", meshCreate=" + std::to_string(meshCreateMs) + "ms" +
-				", opaqueVerts=" + std::to_string(vertices.size()) +
-				", transparentVerts=" + std::to_string(transparentVertices.size()) +
-				", indices=" + std::to_string(indices.size() + transparentIndices.size()) +
-				", total=" + std::to_string(elapsedMs(lodStart)) + "ms"
-			);
+			if (!vertices.empty())
+			{
+				newMesh = std::make_shared<graphics::Mesh>(vertices, indices, nullptr, g::loadTextureAtlas());
+			}
+			if (!transparentVertices.empty())
+			{
+				newTransparentMesh = std::make_shared<graphics::Mesh>(transparentVertices, transparentIndices, nullptr, g::loadTextureAtlas());
+			}
 		}
 
 		{
 			std::unique_lock<std::mutex> lock = acquireLock();
 			if (lod == ChunkLod::FULL)
 			{
-				m_meshes.fill(nullptr);
-				m_transparentMeshes.fill(nullptr);
+				m_pendingMeshes.fill(nullptr);
+				m_pendingTransparentMeshes.fill(nullptr);
+				m_pendingMeshReady.fill(false);
 				m_lodBuildQueued.fill(false);
 			}
-			m_meshes[lodIndex] = std::move(newMesh);
-			m_transparentMeshes[lodIndex] = std::move(newTransparentMesh);
+			m_pendingMeshes[lodIndex] = std::move(newMesh);
+			m_pendingTransparentMeshes[lodIndex] = std::move(newTransparentMesh);
+			m_pendingMeshReady[lodIndex] = true;
 			m_lodBuildQueued[lodIndex] = false;
 		}
-
-		(void)totalStart;
 	}
 
 	void Chunk::buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
@@ -441,13 +423,74 @@ namespace voxel_game::world
 	bool Chunk::tryQueueMeshBuild(ChunkLod lod)
 	{
 		int lodIndex = toLodIndex(lod);
-		if (lod == ChunkLod::FULL || m_meshes[lodIndex] != nullptr || m_lodBuildQueued[lodIndex])
+		if (lod == ChunkLod::FULL || m_meshes[lodIndex] != nullptr || m_pendingMeshReady[lodIndex] || m_lodBuildQueued[lodIndex])
 		{
 			return false;
 		}
 
 		m_lodBuildQueued[lodIndex] = true;
 		return true;
+	}
+
+	bool Chunk::hasPendingMeshUpload()
+	{
+		std::unique_lock<std::mutex> lock = acquireLock();
+		for (bool pending : m_pendingMeshReady)
+		{
+			if (pending)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	int Chunk::uploadPendingMeshes()
+	{
+		for (int lodIndex = 0; lodIndex < CHUNK_LOD_LEVEL_COUNT; lodIndex++)
+		{
+			std::shared_ptr<g::Mesh> mesh;
+			std::shared_ptr<g::Mesh> transparentMesh;
+
+			{
+				std::unique_lock<std::mutex> lock = acquireLock();
+				if (!m_pendingMeshReady[lodIndex])
+				{
+					continue;
+				}
+
+				mesh = m_pendingMeshes[lodIndex];
+				transparentMesh = m_pendingTransparentMeshes[lodIndex];
+			}
+
+			if (mesh)
+			{
+				mesh->upload();
+			}
+			if (transparentMesh)
+			{
+				transparentMesh->upload();
+			}
+
+			{
+				std::unique_lock<std::mutex> lock = acquireLock();
+				if (lodIndex == toLodIndex(ChunkLod::FULL))
+				{
+					m_meshes.fill(nullptr);
+					m_transparentMeshes.fill(nullptr);
+				}
+				m_meshes[lodIndex] = std::move(mesh);
+				m_transparentMeshes[lodIndex] = std::move(transparentMesh);
+				m_pendingMeshes[lodIndex] = nullptr;
+				m_pendingTransparentMeshes[lodIndex] = nullptr;
+				m_pendingMeshReady[lodIndex] = false;
+			}
+
+			return 1;
+		}
+
+		return 0;
 	}
 
 	std::shared_ptr<g::Mesh> Chunk::getMesh(ChunkLod lod)

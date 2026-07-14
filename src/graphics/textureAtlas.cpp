@@ -41,8 +41,6 @@ namespace voxel_game::graphics
 			float texY = 1 - (float)y / height - ATLAS_TEXTURE_SIZE / (float) height;
 			textureAtlasMap[voxel_game::utils::getFileName(path)] = glm::vec2{texX, texY};
 
-			log::info("Added " + path + " to position: (" + std::to_string(texX) + "," + std::to_string(texY) + ")");
-
 			x += ATLAS_TEXTURE_SIZE;
 			if (x >= width)
 			{

@@ -22,6 +22,7 @@ namespace voxel_game
 
 		m_world = new world::World(0L, &m_chunkShader, *m_player);
 		m_world->generate();
+		m_world->uploadPendingMeshes();
 	}
 
 	void VoxelGame::update()
@@ -61,10 +62,12 @@ namespace voxel_game
 			log::info("TPS: " + std::to_string(m_ticks) +
 				", rendered vertices: " + std::to_string(m_renderStats.vertexCount) +
 				", rendered chunks: " + std::to_string(m_renderStats.renderedChunkCount) +
-				", frustum culled chunks: " + std::to_string(m_renderStats.culledChunkCount)
+				", frustum culled chunks: " + std::to_string(m_renderStats.culledChunkCount) +
+				", mesh uploads: " + std::to_string(m_meshUploads)
 			);
 			m_lastTpsLogTime = startTime;
 			m_ticks = 0;
+			m_meshUploads = 0;
 		}
 
 		// TODO: Update to show average FPS over the last second, instead of for this frame only
@@ -88,6 +91,8 @@ namespace voxel_game
 	void VoxelGame::draw()
 	{
 		m_window.update();
+
+		m_meshUploads += m_world->uploadPendingMeshes();
 
 		std::vector<world::Chunk*> visibleChunks = m_world->getVisibleChunks();
 		m_renderStats = m_renderer.renderChunks(visibleChunks, &m_chunkShader, m_player->getCamera());

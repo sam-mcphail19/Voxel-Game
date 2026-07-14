@@ -39,6 +39,9 @@ namespace voxel_game::world
 		BlockTypeId* m_blocks;
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_meshes = {};
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_transparentMeshes = {};
+		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_pendingMeshes = {};
+		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_pendingTransparentMeshes = {};
+		std::array<bool, CHUNK_LOD_LEVEL_COUNT> m_pendingMeshReady = {};
 		std::array<bool, CHUNK_LOD_LEVEL_COUNT> m_lodBuildQueued = {};
 		std::mutex m_mutex;
 
@@ -68,6 +71,8 @@ namespace voxel_game::world
 		std::unique_lock<std::mutex> acquireLock();
 		bool hasMesh(ChunkLod lod);
 		bool tryQueueMeshBuild(ChunkLod lod);
+		bool hasPendingMeshUpload();
+		int uploadPendingMeshes();
 		std::shared_ptr<g::Mesh> getMesh();
 		std::shared_ptr<g::Mesh> getMesh(ChunkLod lod);
 		std::shared_ptr<g::Mesh> getTransparentMesh();

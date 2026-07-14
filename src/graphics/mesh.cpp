@@ -22,10 +22,7 @@ namespace voxel_game::graphics
 
 	void Mesh::render()
 	{
-		if (!m_isInit)
-		{
-			init();
-		}
+		upload();
 
 		m_texture->bind();
 
@@ -37,6 +34,19 @@ namespace voxel_game::graphics
 		m_texture->unbind();
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
+	}
+
+	void Mesh::upload()
+	{
+		if (!m_isInit)
+		{
+			init();
+		}
+	}
+
+	bool Mesh::isUploaded() const
+	{
+		return m_isInit;
 	}
 
 	void Mesh::init()
