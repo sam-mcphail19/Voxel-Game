@@ -75,6 +75,10 @@ int main()
 			voxel_game::log::info("Regenerating with seed: " + std::to_string(seed));
 			noiseTool.generate(seed);
 		}
+		if (voxel_game::input::isKeyJustPressed(GLFW_KEY_V))
+		{
+			noiseTool.cycleView();
+		}
 
 		voxel_game::input::update();
 	}

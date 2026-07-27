@@ -19,6 +19,30 @@ namespace voxel_game::graphics
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
+	void Texture::upload(int width, int height, const unsigned char* pixels)
+	{
+		bind();
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+	}
+
+	Texture* createTexture(int width, int height, const unsigned char* pixels)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		GLuint id;
+		glGenTextures(1, &id);
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		Texture* texture = new Texture(id);
+		texture->upload(width, height, pixels);
+		return texture;
+	}
+
 	Texture* loadTexture(std::string resourcePath, bool forceReload)
 	{
 		if (!forceReload && textureMap.find(resourcePath) != textureMap.end())
@@ -30,27 +54,14 @@ namespace voxel_game::graphics
 		int width, height, bitsPerPixel;
 		unsigned char *buffer = stbi_load(resourcePath.c_str(), &width, &height, &bitsPerPixel, 4);
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		GLuint id;
-		glGenTextures(1, &id);
-		glBindTexture(GL_TEXTURE_2D, id);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+		Texture* texture = createTexture(width, height, buffer);
 
 		if (buffer)
 		{
 			stbi_image_free(buffer);
 		}
 
-		textureMap[resourcePath] = new Texture(id);
+		textureMap[resourcePath] = texture;
 		return textureMap[resourcePath];
 	}
 }

@@ -1,5 +1,8 @@
 #include "voxelGame.hpp"
 
+#include <limits>
+#include <random>
+
 namespace g = voxel_game::graphics;
 
 namespace voxel_game
@@ -10,7 +13,8 @@ namespace voxel_game
 
 		g::createTextureAtlas();
 
-		m_player = new Player(glm::vec3(0, 60, 0));
+		// TODO: actual findPlayerSpawnLocation()
+		m_player = new Player(glm::vec3(0, WATER_HEIGHT + 3, 0));
 
 		physics::Transform* crosshairTransform = new physics::Transform(
 			glm::vec3(-0.5, -0.5, 0),
@@ -20,7 +24,14 @@ namespace voxel_game
 
 		m_crosshair = g::Quad::createQuad(crosshairTransform, g::loadTexture("res/texture/crosshair.png"));
 
-		m_world = new world::World(0L, &m_chunkShader, *m_player);
+		std::random_device randomDevice;
+		std::mt19937 randomEngine(randomDevice());
+		std::uniform_int_distribution<long> seedDistribution(
+			std::numeric_limits<long>::min(), std::numeric_limits<long>::max());
+		long worldSeed = seedDistribution(randomEngine);
+		log::info("World seed: " + std::to_string(worldSeed));
+
+		m_world = new world::World(worldSeed, &m_chunkShader, *m_player);
 		m_world->generate();
 		m_world->uploadPendingMeshes();
 	}

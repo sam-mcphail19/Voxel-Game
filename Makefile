@@ -23,10 +23,22 @@ MINGW_PREFIX ?= /mingw64
 MSYSTEM ?= native
 LDFLAGS := -L$(MINGW_PREFIX)/lib
 
+# MSYS installations can expose MSYSTEM with extra whitespace or inherited
+# tokens. A multi-word value breaks the pattern rule below into multiple
+# targets, so keep a single, filesystem-safe build tag.
+BUILD_TAG := $(firstword $(strip $(MSYSTEM)))
+ifeq ($(BUILD_TAG),)
+BUILD_TAG := native
+endif
+ifeq ($(NOISE_TOOL),1)
+CXXFLAGS += -DNOISE_TOOL
+BUILD_TAG := $(BUILD_TAG)-noise
+endif
+
 # === Source layout ===
 SRC_DIR := src
-OBJ_DIR := obj/$(MSYSTEM)
-BIN_DIR := bin/$(MSYSTEM)
+OBJ_DIR := obj/$(BUILD_TAG)
+BIN_DIR := bin/$(BUILD_TAG)
 TARGET := $(BIN_DIR)/voxel-game
 
 # === Find source files ===
@@ -40,7 +52,7 @@ DEPS := $(OBJS:.o=.d)
 LIBS := -lglfw3 -lglew32 -lopengl32 -ldbghelp
 
 # === Build rules ===
-.PHONY: all clean run install
+.PHONY: all clean run noisetool install
 
 all: $(TARGET)
 
@@ -54,6 +66,9 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 run: $(TARGET)
 	./$(TARGET)
+
+noisetool:
+	$(MAKE) NOISE_TOOL=1 run
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)

@@ -14,13 +14,21 @@ inline constexpr int CHUNK_SIZE = 16;
 inline constexpr int CHUNK_HEIGHT = 256;
 inline constexpr int CHUNK_SIZE_TIMES_HEIGHT = CHUNK_SIZE * CHUNK_HEIGHT;
 inline constexpr int CHUNK_BLOCK_COUNT = CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT;
+inline constexpr int INITIAL_CHUNK_RENDER_DISTANCE = 8;
+inline constexpr int CHUNK_GENERATION_BATCH_SIZE = 16;
+inline constexpr int WORLD_HEIGHT = 512;
+inline constexpr int WATER_HEIGHT = 72;
+inline constexpr int MIN_WORLD_GEN_HEIGHT = 40;
+inline constexpr int MAX_WORLD_GEN_HEIGHT = 300;
+inline constexpr int CHUNK_RENDER_DISTANCE = 32;
+inline constexpr int CHUNK_RENDER_DISTANCE_IN_BLOCKS = CHUNK_RENDER_DISTANCE * CHUNK_SIZE;
 inline constexpr int CHUNK_LOD_LEVEL_COUNT = 3;
-inline constexpr int CHUNK_LOD_1_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 8;
-inline constexpr int CHUNK_LOD_2_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 16;
+inline constexpr int CHUNK_LOD_1_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 16;
+inline constexpr int CHUNK_LOD_2_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 24;
 
 inline constexpr float GRAVITY = 0.01f;
 inline constexpr float MOUSE_SENS = 0.24f;
-inline constexpr float MOVEMENT_SPEED = 0.15f;
+inline constexpr float MOVEMENT_SPEED = 0.25f;
 inline constexpr float JUMP_SPEED = 0.25f;
 inline constexpr float CREATIVE_MOVEMENT_SPEED = 0.35f;
 
@@ -32,13 +40,6 @@ inline constexpr const char* IS_SELECTED_BLOCK_UNIFORM = "u_isSelectedBlock";
 inline constexpr const char* SELECTED_BLOCK_UNIFORM = "u_selectedBlock";
 inline constexpr const char* BLOCK_BREAK_PROG_UNIFORM = "u_blockBreakProgress";
 
-extern int WORLD_HEIGHT;
-extern int WATER_HEIGHT;
-extern int MIN_WORLD_GEN_HEIGHT;
-extern int MAX_WORLD_GEN_HEIGHT;
-extern int CHUNK_RENDER_DISTANCE;
-extern int CHUNK_RENDER_DISTANCE_IN_BLOCKS;
-
-extern std::string TEXTURE_ATLAS_PATH;
+inline constexpr const char* TEXTURE_ATLAS_PATH = "res/textureAtlas.png";
 
 }

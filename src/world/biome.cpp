@@ -2,21 +2,28 @@
 
 namespace voxel_game::world
 {
+	namespace
+	{
+		constexpr int SOIL_DEPTH = 3;
+	}
+
     static int plainsHeight(int x, int z, NoiseGenerator& n) {
         float height = n.noise2(x, z, 0.04f, 2.0f, 0.4f, 2);
 
-        return WATER_HEIGHT + static_cast<int>(height);
+		return WATER_HEIGHT + 4 + static_cast<int>(height * 8.0f);
     }
 
     static BlockTypeId plainsBlock(int x, int y, int z, int height) {
-        if (y == height) return BlockTypeId::GRASS;
-        if (y > height - 3) return BlockTypeId::DIRT;
+        if (y == height) return height < WATER_HEIGHT ? BlockTypeId::DIRT : BlockTypeId::GRASS;
+        if (y > height - SOIL_DEPTH) return BlockTypeId::DIRT;
         return BlockTypeId::STONE;
     }
 
     static int mountainHeight(int x, int z, NoiseGenerator& n) {
         float base = n.noise2(x, z, 0.06f, 2.0f, 0.5f, 4);
-        float ridged = glm::clamp(n.noise2(x - 9999, z - 9999, 0.08f, 2.f, 0.4f, 5), 0.f, 1.f);
+		float ridgeNoise = n.noise2(x - 9999, z - 9999, 0.008f, 2.f, 0.4f, 5) * 2.0f - 1.0f;
+		float ridged = 1.0f - glm::abs(ridgeNoise);
+		ridged *= ridged;
         float h = ridged * (0.6f + 0.4f * base);
 
         float erosion = glm::clamp(1.0f - n.noise2(x + 5000, z + 5000, 0.1f, 2.f, 0.5f, 4), 0.3f, 1.0f);
@@ -43,7 +50,7 @@ namespace voxel_game::world
 
     static BlockTypeId desertBlock(int x, int y, int z, int height) {
         if (y == height) return BlockTypeId::SAND;
-        if (y > height - 3) return BlockTypeId::SANDSTONE;
+        if (y > height - SOIL_DEPTH) return BlockTypeId::SANDSTONE;
         return BlockTypeId::STONE;
     }
 
@@ -53,11 +60,9 @@ namespace voxel_game::world
     }
 
     static BlockTypeId oceanBlock(int x, int y, int z, int height) {
-        if (glm::abs(y - WATER_HEIGHT) <= 4)
-        {
-            return BlockTypeId::SAND;
-        }
-        return BlockTypeId::DIRT;
+        if (y == height) return BlockTypeId::SAND;
+        if (y > height - SOIL_DEPTH) return BlockTypeId::DIRT;
+        return BlockTypeId::STONE;
     }
 
     static const Biome PLAINS = {

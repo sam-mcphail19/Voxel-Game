@@ -89,6 +89,11 @@ namespace voxel_game::input
 		return keys[keycode] == KeyState::PRESSED || keys[keycode] == KeyState::DOWN;
 	}
 
+	bool isKeyJustPressed(int keycode)
+	{
+		return keys[keycode] == KeyState::PRESSED;
+	}
+
 	bool isKeyReleased(int keycode)
 	{
 		return keys[keycode] == KeyState::RELEASED;

@@ -18,12 +18,13 @@ namespace voxel_game::world
 	{
 		const auto start = std::chrono::system_clock::now();
 		int queuedChunks = 0;
+		BlockPos initialChunkCoord = getChunkCoord(toBlockPos(m_player.getPos()));
 
-		for (int x = -CHUNK_RENDER_DISTANCE - 1; x < CHUNK_RENDER_DISTANCE + 1; x++)
+		for (int x = -INITIAL_CHUNK_RENDER_DISTANCE; x <= INITIAL_CHUNK_RENDER_DISTANCE; x++)
 		{
-			for (int z = -CHUNK_RENDER_DISTANCE - 1; z < CHUNK_RENDER_DISTANCE + 1; z++)
+			for (int z = -INITIAL_CHUNK_RENDER_DISTANCE; z <= INITIAL_CHUNK_RENDER_DISTANCE; z++)
 			{
-				generateChunkAsync({ x, 0, z });
+				generateChunkAsync({ initialChunkCoord.x + x, initialChunkCoord.y, initialChunkCoord.z + z });
 				queuedChunks++;
 			}
 		}
@@ -37,7 +38,7 @@ namespace voxel_game::world
 
 		const auto end = std::chrono::system_clock::now();
 		auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-		log::info("World generation took " + std::to_string(durationMs) + "ms");
+		log::info("Initial world generation took " + std::to_string(durationMs) + "ms; remaining chunks will generate in the background");
 	}
 
 	DebugInfo World::update()
@@ -349,9 +350,7 @@ namespace voxel_game::world
 	void World::generateChunk(BlockPos chunkCoord)
 	{
 		Chunk* chunk = new Chunk(chunkCoord, this);
-		BiomeBasedWorldGenerator* worldGenerator = new BiomeBasedWorldGenerator(m_seed);
-		worldGenerator->generateChunkData(*chunk);
-		delete worldGenerator;
+		m_worldGenerator.generateChunkData(*chunk);
 
 		m_chunkManager.putChunk(chunkCoord, chunk);
 
@@ -380,6 +379,16 @@ namespace voxel_game::world
 
 	std::vector<BlockPos> World::getChunksToGenerate()
 	{
+		size_t availableGenerationSlots;
+		{
+			std::unique_lock<std::mutex> lock(m_generatingChunksMutex);
+			if (m_generatingChunks.size() >= CHUNK_GENERATION_BATCH_SIZE)
+			{
+				return {};
+			}
+			availableGenerationSlots = CHUNK_GENERATION_BATCH_SIZE - m_generatingChunks.size();
+		}
+
 		BlockPos currentChunkCoord = getChunkCoord(toBlockPos(m_player.getPos()));
 		int worldHeightInChunks = (WORLD_HEIGHT + CHUNK_HEIGHT - 1) / CHUNK_HEIGHT;
 		int verticalChunkRenderDistance = 1;
@@ -389,7 +398,6 @@ namespace voxel_game::world
 
 		std::vector<BlockPos> result;
 
-		// TODO: Should go from closest to player -> furthest to player
 		for (int x = -CHUNK_RENDER_DISTANCE; x < CHUNK_RENDER_DISTANCE; x++)
 		{
 			for (int z = -CHUNK_RENDER_DISTANCE; z < CHUNK_RENDER_DISTANCE; z++)
@@ -407,6 +415,22 @@ namespace voxel_game::world
 					}
 				}
 			}
+		}
+
+		std::sort(result.begin(), result.end(), [&](const BlockPos& a, const BlockPos& b)
+			{
+				int ax = a.x - currentChunkCoord.x;
+				int ay = a.y - currentChunkCoord.y;
+				int az = a.z - currentChunkCoord.z;
+				int bx = b.x - currentChunkCoord.x;
+				int by = b.y - currentChunkCoord.y;
+				int bz = b.z - currentChunkCoord.z;
+				return ax * ax + ay * ay + az * az < bx * bx + by * by + bz * bz;
+			});
+
+		if (result.size() > availableGenerationSlots)
+		{
+			result.resize(availableGenerationSlots);
 		}
 
 		return result;

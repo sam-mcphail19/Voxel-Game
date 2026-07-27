@@ -1,40 +1,61 @@
 #pragma once
 
 #include <algorithm>
-#include <functional>
-#include <mutex>
+#include <array>
 #include <unordered_map>
 #include "worldGenerator.hpp"
 #include "biome.hpp"
 #include "chunk.hpp"
 #include "noiseGenerator.hpp"
+#include "hydrologyGenerator.hpp"
+#include "caveGenerator.hpp"
+#include "terrainGenerator.hpp"
+#include "biomeSelector.hpp"
 #include "../common/threadSafeMap.hpp"
 #include "../util/mathUtils.hpp"
 #include "../util/log.hpp"
 
 namespace voxel_game::world
 {
-	struct BiomeWeight
+	struct TerrainDebugSample
 	{
-		const Biome *biome;
-		float weight;
-
-		bool operator<(BiomeWeight const &other) const noexcept
-		{
-			return weight < other.weight;
-		}
+		float continentalness;
+		float erosion;
+		float temperature;
+		float humidity;
+		float ridge;
+		float coast;
+		float slope;
+		float plateauCliffs;
+		float formations;
+		float rivers;
+		float height;
+		float densityStrength;
+		std::array<float, 5> terrainWeights;
+		TerrainType dominantTerrain;
+		BiomeType biome;
+		int surfaceHeight;
+		BlockTypeId surfaceBlock;
 	};
 
 	class BiomeBasedWorldGenerator : public WorldGenerator
 	{
 	private:
-		NoiseGenerator m_noiseGenerator;
+		BiomeSelector m_biomeSelector;
+		TerrainGenerator m_terrainGenerator;
+		HydrologyGenerator m_hydrologyGenerator;
+		CaveGenerator m_caveGenerator;
 		ThreadSafeMap<int, std::unordered_map<int, int>> m_heightMap;
 
-		float calculateNoise(int x, int z);
+		TerrainSample sampleTerrain(int x, int z);
+		float calculateDensity(const TerrainSample& terrain, int x, int y, int z);
+		bool isWater(const TerrainSample& terrain, int y) const;
+		int calculateSurfaceHeight(const TerrainSample& terrain, int x, int z);
+		float calculateSlope(int x, int z);
+		BlockTypeId getSurfaceBlockType(const Biome* biome, const TerrainSample& terrain, float slope, int x, int z, int surfaceHeight);
+		std::vector<BiomeWeight> buildWeights(const TerrainSample& terrain);
 		int calculateHeight(int x, int z);
-		int calculateHeight(std::vector<BiomeWeight>& normalizedWeights, int x, int z);
-		const Biome* getDominantBiome(std::vector<BiomeWeight>& weights);
+		const Biome* selectBiome(std::vector<BiomeWeight> weights, int x, int z);
 
 	public:
 		BiomeBasedWorldGenerator(long seed);
@@ -43,6 +64,8 @@ namespace voxel_game::world
 		float calcErosion(int x, int z);
 		float calcTemperature(int x, int z);
 		float calcHumidity(int x, int z);
+		TerrainDebugSample getTerrainDebugSample(int x, int z);
+		static BlockTypeId selectSurfaceBlock(BlockTypeId biomeSurfaceBlock, float coastMask, float slope, int surfaceHeight);
 
 		std::vector<BiomeWeight> buildWeights(int x, int z);
 		std::vector<BiomeWeight> normalizeWeights(std::vector<BiomeWeight> weights);

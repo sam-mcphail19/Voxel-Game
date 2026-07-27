@@ -23,6 +23,7 @@ namespace voxel_game::input
 	void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 	void cursor_pos_callback(GLFWwindow* window, double mouseX, double mouseY);
 	bool isKeyPressed(int keycode);
+	bool isKeyJustPressed(int keycode);
 	bool isKeyReleased(int keycode);
 	bool isButtonPressed(int button);
 	bool isButtonDown(int button);

@@ -56,7 +56,7 @@ namespace voxel_game::world
 		void buildGreedyOpaqueMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
 		void buildTransparentMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
 
-		void addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f));
+		void addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f), int lodScale = 1);
 		void addGreedyFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos blockPos, int width, int height, int lodScale, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
 
 	public:

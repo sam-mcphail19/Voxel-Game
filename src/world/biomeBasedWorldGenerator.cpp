@@ -2,135 +2,209 @@
 
 namespace voxel_game::world
 {
-	static float hash01(int x, int z) {
-		uint32_t h = uint32_t(x)*0x8DA6B343u
-				^ uint32_t(z)*0xD8163841u;
-		h = (h ^ (h >> 16)) * 0x45D9F3Bu;
-		h = (h ^ (h >> 16)) * 0x45D9F3Bu;
-		h = h ^ (h >> 16);
-		return float(h & 0xFFFFFF) / float(0x1000000);
+	namespace
+	{
+		constexpr float RIVER_SURFACE_CLEARANCE = 1.0f;
+		constexpr float HEADWATER_BED_DEPTH = 2.0f;
+		constexpr float MAJOR_RIVER_BED_DEPTH = 5.0f;
+		constexpr float RIVER_DENSITY_SCALE = 0.45f;
+		constexpr float RIVER_BANK_MASK_THRESHOLD = 0.35f;
+		constexpr float RIVER_WATER_MASK_THRESHOLD = 0.45f;
+		constexpr float RIVER_SAND_MAX_SLOPE = 2.5f;
+
+		constexpr float COAST_MASK_THRESHOLD = 0.35f;
+		constexpr int BEACH_MAX_HEIGHT_ABOVE_WATER = 2;
+		constexpr float BEACH_SAND_MAX_SLOPE = 2.0f;
+		constexpr float STONE_SURFACE_MIN_SLOPE = 4.0f;
+		constexpr float GRAVEL_SURFACE_MIN_SLOPE = 2.5f;
+		constexpr float CENTRAL_DIFFERENCE_SCALE = 0.5f;
+		constexpr int BEDROCK_THICKNESS = 4;
+		constexpr int COLUMN_SAMPLE_BORDER = 1;
+
+		float calculateSlopeFromHeights(int west, int east, int north, int south)
+		{
+			return CENTRAL_DIFFERENCE_SCALE
+				* std::max(std::abs(east - west), std::abs(south - north));
+		}
 	}
 
 	BiomeBasedWorldGenerator::BiomeBasedWorldGenerator(long seed)
-		: m_noiseGenerator(seed) {}
-
-	//TODO: refactor so this goes with the other biome specific definitions
-	static BiomeWeight scoreOcean(float cont, float temp, float hum, float erosion)
-	{
-		float w = utils::sigmoid(1.0f, 0.4f, -15.0f, cont);
-
-		std::vector<float> weights = {w};
-
-		return {BIOMES.at(BiomeType::Ocean), utils::average(weights)};
-	}
-
-	static BiomeWeight scoreDesert(float cont, float temp, float hum, float erosion)
-	{
-		float wt = glm::smoothstep(0.6f, 1.0f, temp);
-		float wh = 1 - glm::smoothstep(0.0f, 0.3f, hum);
-
-		std::vector<float> weights = {wt, wh};
-
-		return {BIOMES.at(BiomeType::Desert), utils::average(weights)};
-	}
-
-	static BiomeWeight scoreMountain(float cont, float temp, float hum, float erosion)
-	{
-		float wc = utils::sigmoid(1.0f, 0.65f, 20.0f, cont);
-		float we = std::pow(100.0f, -erosion);
-
-		std::vector<float> weights = {wc, we};
-
-		return {BIOMES.at(BiomeType::Mountains), utils::average(weights)};
-	}
-
-	static BiomeWeight scorePlains(float cont, float temp, float hum, float erosion)
-	{
-		float wc = 1 - 10 * std::pow(cont - 0.7f, 2);
-		float we = std::pow(100.0f, erosion - 0.8f);
-
-		std::vector<float> weights = {wc, we};
-
-		return {BIOMES.at(BiomeType::Plains), utils::average(weights)};
-	}
+		: m_biomeSelector(seed),
+		  m_terrainGenerator(seed, [this](const TerrainSample& terrain) {
+			  return m_biomeSelector.getWeight(terrain, BiomeType::Plains);
+		  }),
+		  m_hydrologyGenerator(seed, [this](int x, int z) {
+			  return m_terrainGenerator.sampleBase(x, z).height;
+		  }),
+		  m_caveGenerator(seed) {}
 
 	float BiomeBasedWorldGenerator::calcContinentalness(int x, int z)
 	{
-		return m_noiseGenerator.noise2(x + 5555, z + 5555, 0.005f, 2.0f, 0.5f, 3);
+		return m_terrainGenerator.sampleContinentalness(x, z);
 	}
 
 	float BiomeBasedWorldGenerator::calcErosion(int x, int z)
 	{
-		return m_noiseGenerator.noise2(x + 1111, z + 1111, 0.0005f, 2.0f, 0.5f, 3);
+		return m_terrainGenerator.sampleErosion(x, z);
 	}
 
 	float BiomeBasedWorldGenerator::calcTemperature(int x, int z)
 	{
-		return m_noiseGenerator.noise2(x, z, 0.001f, 2.0f, 0.5f, 4);
+		return m_terrainGenerator.sampleTemperature(x, z);
 	}
 
 	float BiomeBasedWorldGenerator::calcHumidity(int x, int z)
 	{
-		return m_noiseGenerator.noise2(x + 9999, z + 9999, 0.02f, 2.0f, 0.5f, 4);
+		return m_terrainGenerator.sampleHumidity(x, z);
 	}
 
 	std::vector<BiomeWeight> BiomeBasedWorldGenerator::buildWeights(int x, int z)
 	{
-		float cont = calcContinentalness(x, z);
-		float erosion = calcErosion(x, z);
-		float temp = calcTemperature(x, z);
-		float hum = calcHumidity(x, z);
+		return buildWeights(sampleTerrain(x, z));
+	}
 
-		BiomeWeight ocean = scoreOcean(cont, temp, hum, erosion);
-		BiomeWeight desert = scoreDesert(cont, temp, hum, erosion);
-		BiomeWeight mountains = scoreMountain(cont, temp, hum, erosion);
-		BiomeWeight plains = scorePlains(cont, temp, hum, erosion);
-
-		return std::vector<BiomeWeight>{
-			ocean, 
-			desert,
-			mountains,
-			plains
-		};
+	std::vector<BiomeWeight> BiomeBasedWorldGenerator::buildWeights(const TerrainSample& terrain)
+	{
+		return m_biomeSelector.buildWeights(terrain);
 	}
 
 	std::vector<BiomeWeight> BiomeBasedWorldGenerator::normalizeWeights(std::vector<BiomeWeight> weights)
 	{
-		float sum = 0.f;
-		for (auto &biomeWeight : weights)
-		{
-			sum += biomeWeight.weight;
-		}
-		if (sum > 0.f)
-		{
-			for (auto &biomeWeight : weights)
-			{
-				biomeWeight.weight /= sum;
-			}
-		}
-		return weights;
+		return m_biomeSelector.normalize(std::move(weights));
 	}
 
 	int BiomeBasedWorldGenerator::calculateHeight(int x, int z)
 	{
-		auto biomeWeights = buildWeights(x, z);
-		biomeWeights = normalizeWeights(biomeWeights);
-		return calculateHeight(biomeWeights, x, z);
+		auto terrain = sampleTerrain(x, z);
+		return calculateSurfaceHeight(terrain, x, z);
 	}
 
-	int BiomeBasedWorldGenerator::calculateHeight(std::vector<BiomeWeight>& normalizedWeights, int x, int z)
+	int BiomeBasedWorldGenerator::calculateSurfaceHeight(const TerrainSample& terrain, int x, int z)
 	{
-		float totalHeight = 0.f;
-		for (auto &biomeWeight : normalizedWeights)
+		float maximumDisplacement = terrain.densityStrength + terrain.formationStrength;
+		int searchTop = std::min(WORLD_HEIGHT - 1, static_cast<int>(std::ceil(terrain.height + maximumDisplacement)));
+		for (int y = searchTop; y >= 0; --y)
 		{
-			totalHeight += biomeWeight.weight * biomeWeight.biome->getHeight(x, z, m_noiseGenerator);
+			if (calculateDensity(terrain, x, y, z) > 0.0f)
+			{
+				return y;
+			}
 		}
-		return static_cast<int>(totalHeight);
+		return 0;
 	}
 
-	const Biome* BiomeBasedWorldGenerator::getDominantBiome(std::vector<BiomeWeight>& weights)
+	TerrainSample BiomeBasedWorldGenerator::sampleTerrain(int x, int z)
 	{
-		return std::max_element(weights.begin(), weights.end())->biome;
+		TerrainSample result = m_terrainGenerator.sampleBase(x, z);
+		HydrologySample hydrology = m_hydrologyGenerator.sample(x, z);
+		result.riverMask = hydrology.mask;
+		result.riverFlow = hydrology.flow;
+		result.riverSurfaceHeight = std::min(
+			hydrology.waterSurfaceHeight, result.height - RIVER_SURFACE_CLEARANCE);
+
+		if (result.riverMask > 0.0f)
+		{
+			float riverBedDepth = utils::lerp(
+				HEADWATER_BED_DEPTH, MAJOR_RIVER_BED_DEPTH, result.riverFlow);
+			float riverBedHeight = result.riverSurfaceHeight - riverBedDepth;
+			result.height = utils::lerp(result.height, std::min(result.height, riverBedHeight), result.riverMask);
+			result.densityStrength *= utils::lerp(1.0f, RIVER_DENSITY_SCALE, result.riverMask);
+			result.formationStrength *= 1.0f - result.riverMask;
+			result.formationMask *= 1.0f - result.riverMask;
+		}
+
+		return result;
+	}
+
+	float BiomeBasedWorldGenerator::calculateSlope(int x, int z)
+	{
+		int west = calculateSurfaceHeight(sampleTerrain(x - 1, z), x - 1, z);
+		int east = calculateSurfaceHeight(sampleTerrain(x + 1, z), x + 1, z);
+		int north = calculateSurfaceHeight(sampleTerrain(x, z - 1), x, z - 1);
+		int south = calculateSurfaceHeight(sampleTerrain(x, z + 1), x, z + 1);
+		return calculateSlopeFromHeights(west, east, north, south);
+	}
+
+	BlockTypeId BiomeBasedWorldGenerator::getSurfaceBlockType(const Biome* biome, const TerrainSample& terrain, float slope, int x, int z, int surfaceHeight)
+	{
+		if (terrain.riverMask > RIVER_BANK_MASK_THRESHOLD)
+		{
+			return slope < RIVER_SAND_MAX_SLOPE ? BlockTypeId::SAND : BlockTypeId::GRAVEL;
+		}
+		BlockTypeId biomeSurfaceBlock = biome->blockFunc(x, surfaceHeight, z, surfaceHeight);
+		return selectSurfaceBlock(biomeSurfaceBlock, terrain.coastMask, slope, surfaceHeight);
+	}
+
+	BlockTypeId BiomeBasedWorldGenerator::selectSurfaceBlock(BlockTypeId biomeSurfaceBlock, float coastMask, float slope, int surfaceHeight)
+	{
+		if (surfaceHeight < WATER_HEIGHT) return biomeSurfaceBlock;
+		if (coastMask > COAST_MASK_THRESHOLD
+			&& surfaceHeight <= WATER_HEIGHT + BEACH_MAX_HEIGHT_ABOVE_WATER)
+		{
+			return slope < BEACH_SAND_MAX_SLOPE ? BlockTypeId::SAND : BlockTypeId::GRAVEL;
+		}
+		if (slope >= STONE_SURFACE_MIN_SLOPE)
+		{
+			return BlockTypeId::STONE;
+		}
+		if (slope >= GRAVEL_SURFACE_MIN_SLOPE)
+		{
+			return BlockTypeId::GRAVEL;
+		}
+		return biomeSurfaceBlock;
+	}
+
+	float BiomeBasedWorldGenerator::calculateDensity(const TerrainSample& terrain, int x, int y, int z)
+	{
+		float terrainDensity = m_terrainGenerator.sampleDensity(terrain, x, y, z);
+		float caveDensity = m_caveGenerator.sampleDensity(x, y, z, terrain.height);
+		return std::min(terrainDensity, caveDensity);
+	}
+
+	bool BiomeBasedWorldGenerator::isWater(const TerrainSample& terrain, int y) const
+	{
+		return (y <= WATER_HEIGHT && terrain.height < WATER_HEIGHT)
+			|| (terrain.riverMask > RIVER_WATER_MASK_THRESHOLD
+				&& y <= static_cast<int>(std::floor(terrain.riverSurfaceHeight)));
+	}
+
+	TerrainDebugSample BiomeBasedWorldGenerator::getTerrainDebugSample(int x, int z)
+	{
+		auto terrain = sampleTerrain(x, z);
+		auto dominant = std::max_element(terrain.terrainWeights.begin(), terrain.terrainWeights.end());
+		int surfaceHeight = calculateSurfaceHeight(terrain, x, z);
+		float slope = 0.0f;
+		BlockTypeId surfaceBlock = BlockTypeId::WATER;
+		auto weights = buildWeights(terrain);
+		const Biome* selectedBiome = selectBiome(weights, x, z);
+		if (surfaceHeight > WATER_HEIGHT)
+		{
+			surfaceBlock = selectedBiome->blockFunc(x, surfaceHeight, z, surfaceHeight);
+		}
+		return {
+			terrain.continentalness,
+			terrain.erosion,
+			terrain.temperature,
+			terrain.humidity,
+			terrain.ridge,
+			terrain.coastMask,
+			slope,
+			terrain.plateauCliffMask,
+			terrain.formationMask,
+			terrain.riverMask,
+			terrain.height,
+			terrain.densityStrength,
+			terrain.terrainWeights,
+			static_cast<TerrainType>(std::distance(terrain.terrainWeights.begin(), dominant)),
+			selectedBiome->type,
+			surfaceHeight,
+			surfaceBlock
+		};
+	}
+
+	const Biome* BiomeBasedWorldGenerator::selectBiome(std::vector<BiomeWeight> weights, int x, int z)
+	{
+		return m_biomeSelector.select(std::move(weights), x, z);
 	}
 
 	int BiomeBasedWorldGenerator::getHeight(int x, int z)
@@ -148,21 +222,56 @@ namespace voxel_game::world
 	BlockTypeId BiomeBasedWorldGenerator::getBlockType(BlockPos pos)
 	{
 		int x = pos.x, z = pos.z, y = pos.y;
-		int height = getHeight(x, z);
+		if (y < BEDROCK_THICKNESS) return BlockTypeId::BEDROCK;
 
-		if (y > height)
+		auto terrain = sampleTerrain(x, z);
+		int surfaceHeight = getHeight(x, z);
+
+		if (calculateDensity(terrain, x, y, z) <= 0.0f)
 		{
-			return y <= WATER_HEIGHT ? BlockTypeId::WATER : BlockTypeId::AIR;
+			return isWater(terrain, y) ? BlockTypeId::WATER : BlockTypeId::AIR;
 		}
 
-		auto weights = buildWeights(x, z);
+		auto weights = buildWeights(terrain);
+		const Biome* dominantBiome = selectBiome(weights, x, z);
 
-		return getDominantBiome(weights)->blockFunc(x, y, z, height);
+		if (y == surfaceHeight)
+		{
+			return getSurfaceBlockType(dominantBiome, terrain, calculateSlope(x, z), x, z, surfaceHeight);
+		}
+		return dominantBiome->blockFunc(x, y, z, surfaceHeight);
 	}
 
 	void BiomeBasedWorldGenerator::generateChunkData(Chunk &chunk)
 	{
 		auto origin = chunk.getOrigin();
+		constexpr int PADDED_SIZE = CHUNK_SIZE + COLUMN_SAMPLE_BORDER * 2;
+		struct ColumnData
+		{
+			TerrainSample terrain;
+			int surfaceHeight;
+		};
+		std::array<ColumnData, PADDED_SIZE * PADDED_SIZE> columns;
+		auto columnAt = [&](int localX, int localZ) -> const ColumnData&
+		{
+			int paddedX = localX + COLUMN_SAMPLE_BORDER;
+			int paddedZ = localZ + COLUMN_SAMPLE_BORDER;
+			return columns[paddedX + paddedZ * PADDED_SIZE];
+		};
+
+		for (int paddedX = 0; paddedX < PADDED_SIZE; ++paddedX)
+		{
+			for (int paddedZ = 0; paddedZ < PADDED_SIZE; ++paddedZ)
+			{
+				int worldX = origin.x + paddedX - COLUMN_SAMPLE_BORDER;
+				int worldZ = origin.z + paddedZ - COLUMN_SAMPLE_BORDER;
+				auto terrain = sampleTerrain(worldX, worldZ);
+				columns[paddedX + paddedZ * PADDED_SIZE] = {
+					terrain,
+					calculateSurfaceHeight(terrain, worldX, worldZ)
+				};
+			}
+		}
 
 		for (int x = 0; x < CHUNK_SIZE; x++)
 		{
@@ -170,22 +279,35 @@ namespace voxel_game::world
 			{
 				int worldX = origin.x + x;
 				int worldZ = origin.z + z;
-				auto weights = buildWeights(worldX, worldZ);
-				const Biome* dominantBiome = getDominantBiome(weights);
-				weights = normalizeWeights(weights);
-				int height = calculateHeight(weights, worldX, worldZ);
+				const auto& column = columnAt(x, z);
+				const auto& terrain = column.terrain;
+				auto weights = buildWeights(terrain);
+				const Biome* dominantBiome = selectBiome(weights, worldX, worldZ);
+				int surfaceHeight = column.surfaceHeight;
+				int west = columnAt(x - 1, z).surfaceHeight;
+				int east = columnAt(x + 1, z).surfaceHeight;
+				int north = columnAt(x, z - 1).surfaceHeight;
+				int south = columnAt(x, z + 1).surfaceHeight;
+				float slope = calculateSlopeFromHeights(west, east, north, south);
+				BlockTypeId surfaceBlockType = getSurfaceBlockType(dominantBiome, terrain, slope, worldX, worldZ, surfaceHeight);
 
 				for (int y = 0; y < CHUNK_HEIGHT; y++)
 				{
 					int worldY = origin.y + y;
 					BlockTypeId blockTypeId;
-					if (worldY > height)
+					if (worldY < BEDROCK_THICKNESS)
 					{
-						blockTypeId = worldY <= WATER_HEIGHT ? BlockTypeId::WATER : BlockTypeId::AIR;
+						blockTypeId = BlockTypeId::BEDROCK;
+					}
+					else if (calculateDensity(terrain, worldX, worldY, worldZ) <= 0.0f)
+					{
+						blockTypeId = isWater(terrain, worldY) ? BlockTypeId::WATER : BlockTypeId::AIR;
 					}
 					else
 					{
-						blockTypeId = dominantBiome->blockFunc(worldX, worldY, worldZ, height);
+						blockTypeId = worldY == surfaceHeight
+							? surfaceBlockType
+							: dominantBiome->blockFunc(worldX, worldY, worldZ, surfaceHeight);
 					}
 
 					chunk.putBlock(Block{ BlockPos{ x, y, z }, blockTypeId });

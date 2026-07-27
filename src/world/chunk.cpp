@@ -21,7 +21,7 @@ namespace voxel_game::world
 			return isTransparent(neighbour);
 		}
 
-		g::AtlasTexture getTextureForFace(BlockTypeId blockTypeId, g::Direction direction)
+		g::AtlasTexture getTextureForFace(BlockTypeId blockTypeId, g::Direction direction, int lodScale)
 		{
 			switch (blockTypeId)
 			{
@@ -38,6 +38,12 @@ namespace voxel_game::world
 				}
 				if (direction == g::Direction::BOTTOM)
 				{
+					return g::AtlasTexture::DIRT;
+				}
+				if (lodScale > 1)
+				{
+					// Repeating GRASS_SIDE vertically makes every texel-sized
+					// section look like another grass-topped block at coarse LODs.
 					return g::AtlasTexture::DIRT;
 				}
 				return g::AtlasTexture::GRASS_SIDE;
@@ -292,7 +298,7 @@ namespace voxel_game::world
 
 						if (blockTypeId == BlockTypeId::WATER)
 						{
-							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, transparentVertices, transparentIndices, meshScale);
+							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, transparentVertices, transparentIndices, meshScale, lodScale);
 						}
 					}
 				}
@@ -324,10 +330,10 @@ namespace voxel_game::world
 			break;
 		}
 
-		addFaceToMesh(blockTypeId, direction, blockPos + m_origin, toVec3(blockPos), vertices, indices, scale);
+		addFaceToMesh(blockTypeId, direction, blockPos + m_origin, toVec3(blockPos), vertices, indices, scale, lodScale);
 	}
 
-	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale)
+	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale, int lodScale)
 	{
 		for (int j = 0; j < g::Quad::indexCount; j++)
 		{
@@ -336,7 +342,7 @@ namespace voxel_game::world
 
 		int vertexPositionIndex = g::Quad::vertexPositionIndexMap.at(direction);
 		int uvIndex = g::Quad::uvIndexMap.at(direction);
-		glm::vec2 atlasTileCoords = g::getTextureAtlasTileCoords(getTextureForFace(blockTypeId, direction));
+		glm::vec2 atlasTileCoords = g::getTextureAtlasTileCoords(getTextureForFace(blockTypeId, direction, lodScale));
 		glm::vec2 uvRepeat(1.f);
 		switch (direction)
 		{
