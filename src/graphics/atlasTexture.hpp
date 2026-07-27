@@ -17,6 +17,9 @@ namespace voxel_game::graphics
 		GRAVEL,
 		SANDSTONE,
 		SANDSTONE_SIDE,
+		MARSH_GRASS,
+		MUD,
+		RED_SANDSTONE,
 	};
 
 	const std::map<AtlasTexture, std::string> atlasTextureToNameMap = {
@@ -30,6 +33,9 @@ namespace voxel_game::graphics
 		{AtlasTexture::GRAVEL, "gravel"},
 		{AtlasTexture::SANDSTONE, "sandstone"},
 		{AtlasTexture::SANDSTONE_SIDE, "sandstone_side"},
+		{AtlasTexture::MARSH_GRASS, "marsh_grass"},
+		{AtlasTexture::MUD, "mud"},
+		{AtlasTexture::RED_SANDSTONE, "red_sandstone"},
 	};
 
 	std::string getName(AtlasTexture tex);

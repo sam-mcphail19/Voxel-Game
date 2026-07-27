@@ -32,6 +32,26 @@ namespace voxel_game::world
 		constexpr float PLAINS_GENTLE_END = 0.70f;
 		constexpr float PLAINS_BASE_WEIGHT = 0.35f;
 
+		constexpr float MARSH_COAST_START = 0.42f;
+		constexpr float MARSH_COAST_END = 0.52f;
+		constexpr float MARSH_INLAND_FADE_START = 0.62f;
+		constexpr float MARSH_INLAND_FADE_END = 0.72f;
+		constexpr float MARSH_HUMIDITY_IMPORTANCE = 0.65f;
+		constexpr float MARSH_GENTLENESS_IMPORTANCE = 0.35f;
+		constexpr float MARSH_CLIMATE_START = 0.48f;
+		constexpr float MARSH_CLIMATE_END = 0.70f;
+		constexpr float MARSH_STRENGTH = 1.20f;
+
+		constexpr float BADLANDS_INLAND_START = 0.54f;
+		constexpr float BADLANDS_INLAND_END = 0.70f;
+		constexpr float BADLANDS_WARM_IMPORTANCE = 0.45f;
+		constexpr float BADLANDS_DRY_IMPORTANCE = 0.35f;
+		constexpr float BADLANDS_RUGGED_IMPORTANCE = 0.20f;
+		constexpr float BADLANDS_CLIMATE_START = 0.42f;
+		constexpr float BADLANDS_CLIMATE_END = 0.68f;
+		constexpr float BADLANDS_RUGGED_START = 0.42f;
+		constexpr float BADLANDS_RUGGED_END = 0.72f;
+
 		constexpr float CLEAR_BIOME_LEAD = 0.035f;
 		constexpr float TRANSITION_NOISE_SCALE = 0.025f;
 		constexpr int TRANSITION_NOISE_X_OFFSET = 34001;
@@ -69,11 +89,36 @@ namespace voxel_game::world
 		float plains = plainsLand
 			* (PLAINS_BASE_WEIGHT + (1.0f - PLAINS_BASE_WEIGHT) * gentle);
 
+		float marshCoast = glm::smoothstep(
+			MARSH_COAST_START, MARSH_COAST_END, terrain.continentalness)
+			* (1.0f - glm::smoothstep(
+				MARSH_INLAND_FADE_START, MARSH_INLAND_FADE_END, terrain.continentalness));
+		float marshClimate = glm::smoothstep(
+			MARSH_CLIMATE_START,
+			MARSH_CLIMATE_END,
+			terrain.humidity * MARSH_HUMIDITY_IMPORTANCE
+				+ terrain.erosion * MARSH_GENTLENESS_IMPORTANCE);
+
+		float badlandsInland = glm::smoothstep(
+			BADLANDS_INLAND_START, BADLANDS_INLAND_END, terrain.continentalness);
+		float badlandsWarm = glm::smoothstep(DESERT_HOT_START, DESERT_HOT_END, terrain.temperature);
+		float badlandsDry = 1.0f - glm::smoothstep(DESERT_DRY_START, DESERT_DRY_END, terrain.humidity);
+		float badlandsRugged = 1.0f - glm::smoothstep(
+			BADLANDS_RUGGED_START, BADLANDS_RUGGED_END, terrain.erosion);
+		float badlandsClimate = glm::smoothstep(
+			BADLANDS_CLIMATE_START,
+			BADLANDS_CLIMATE_END,
+			badlandsWarm * BADLANDS_WARM_IMPORTANCE
+				+ badlandsDry * BADLANDS_DRY_IMPORTANCE
+				+ badlandsRugged * BADLANDS_RUGGED_IMPORTANCE);
+
 		return {
 			{BIOMES.at(BiomeType::Ocean), ocean},
 			{BIOMES.at(BiomeType::Desert), desertInland * desertClimate},
 			{BIOMES.at(BiomeType::Mountains), mountainInland * rugged},
-			{BIOMES.at(BiomeType::Plains), plains}
+			{BIOMES.at(BiomeType::Plains), plains},
+			{BIOMES.at(BiomeType::Marsh), marshCoast * marshClimate * MARSH_STRENGTH},
+			{BIOMES.at(BiomeType::Badlands), badlandsInland * badlandsClimate}
 		};
 	}
 

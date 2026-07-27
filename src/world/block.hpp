@@ -22,6 +22,9 @@ namespace voxel_game::world
 		SAND,
 		GRAVEL,
 		SANDSTONE,
+		MARSH_GRASS,
+		MUD,
+		RED_SANDSTONE,
 	};
 
 	std::string toString(BlockTypeId id);

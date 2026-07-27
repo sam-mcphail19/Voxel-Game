@@ -12,7 +12,9 @@ namespace voxel_game::world {
 		Plains,
 		Mountains,
 		Desert,
-		Ocean
+		Ocean,
+		Marsh,
+		Badlands
 	};
 
 	struct Biome {
@@ -35,6 +37,10 @@ namespace voxel_game::world {
 			return "Desert";
 		case BiomeType::Ocean:
 			return "Ocean";
+		case BiomeType::Marsh:
+			return "Marsh";
+		case BiomeType::Badlands:
+			return "Badlands";
 		}
 
 		return "Biome not found";

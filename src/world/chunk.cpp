@@ -59,6 +59,16 @@ namespace voxel_game::world
 					return g::AtlasTexture::SANDSTONE;
 				}
 				return g::AtlasTexture::SANDSTONE_SIDE;
+			case BlockTypeId::MARSH_GRASS:
+				if (direction == g::Direction::TOP)
+				{
+					return g::AtlasTexture::MARSH_GRASS;
+				}
+				return g::AtlasTexture::MUD;
+			case BlockTypeId::MUD:
+				return g::AtlasTexture::MUD;
+			case BlockTypeId::RED_SANDSTONE:
+				return g::AtlasTexture::RED_SANDSTONE;
 			default:
 				return g::AtlasTexture::STONE;
 			}

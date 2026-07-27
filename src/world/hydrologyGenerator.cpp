@@ -25,6 +25,10 @@ namespace voxel_game::world
 		constexpr float BLEND_WIDTH = PADDING * CELL_SIZE;
 		constexpr float DRAINAGE_EPSILON = 0.001f;
 		constexpr int SOURCE_SPACING = 4;
+		constexpr float LAKE_MIN_SURFACE_HEIGHT = WATER_HEIGHT + 4.0f;
+		constexpr float LAKE_SHORE_DEPTH = 1.5f;
+		constexpr float LAKE_FULL_DEPTH = 4.0f;
+		constexpr float LAKE_SURFACE_CLEARANCE = 0.5f;
 
 		struct AxisBlend
 		{
@@ -167,6 +171,18 @@ namespace voxel_game::world
 			if (receiver[index] >= 0) accumulation[receiver[index]] += accumulation[index];
 		}
 
+		// Priority-flood raises enclosed depressions to their spill elevation.
+		// That difference from the original terrain is the lake-basin depth.
+		std::array<float, CELL_COUNT> lakeMask{};
+		std::array<float, CELL_COUNT> lakeWaterHeight{};
+		for (int index = 0; index < CELL_COUNT; ++index)
+		{
+			float fillDepth = drainageHeights[index] - heights[index];
+			if (drainageHeights[index] <= LAKE_MIN_SURFACE_HEIGHT) continue;
+			lakeMask[index] = glm::smoothstep(LAKE_SHORE_DEPTH, LAKE_FULL_DEPTH, fillDepth);
+			lakeWaterHeight[index] = drainageHeights[index] - LAKE_SURFACE_CLEARANCE;
+		}
+
 		std::array<float, CELL_COUNT> sourceScores{};
 		for (int gz = 0; gz < GRID_SIZE; ++gz)
 		{
@@ -258,6 +274,12 @@ namespace voxel_game::world
 				region->riverMask[index] = bestMask;
 				region->waterSurfaceHeight[index] = bestWaterHeight;
 				region->riverFlow[index] = bestFlow;
+				if (lakeMask[index] > region->riverMask[index])
+				{
+					region->riverMask[index] = lakeMask[index];
+					region->waterSurfaceHeight[index] = lakeWaterHeight[index];
+					region->riverFlow[index] = 0.0f;
+				}
 			}
 		}
 

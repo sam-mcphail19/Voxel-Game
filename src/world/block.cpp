@@ -15,6 +15,9 @@ namespace voxel_game::world
 			{BlockTypeId::SAND, "Sand"},
 			{BlockTypeId::GRAVEL, "Gravel"},
 			{BlockTypeId::SANDSTONE, "Sandstone"},
+			{BlockTypeId::MARSH_GRASS, "Marsh Grass"},
+			{BlockTypeId::MUD, "Mud"},
+			{BlockTypeId::RED_SANDSTONE, "Red Sandstone"},
 		};
 
 		auto it = blockTypeStrings.find(id);

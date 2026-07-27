@@ -28,6 +28,8 @@ namespace voxel_game::world
 		constexpr NoiseParameters TERRAIN_SELECTOR_NOISE{0.0011f, 2.0f, 0.5f, 3};
 		constexpr NoiseParameters PLATEAU_SELECTOR_NOISE{0.0014f, 2.0f, 0.5f, 3};
 		constexpr NoiseParameters HEIGHT_DETAIL_NOISE{0.018f, 2.0f, 0.48f, 4};
+		constexpr NoiseParameters OCEAN_BASIN_NOISE{0.0024f, 2.0f, 0.5f, 3};
+		constexpr NoiseParameters SEAFLOOR_DETAIL_NOISE{0.010f, 2.0f, 0.45f, 3};
 		constexpr NoiseParameters FORMATION_REGION_NOISE{0.0009f, 2.0f, 0.5f, 3};
 		constexpr NoiseParameters PLATEAU_NOISE{0.006f, 2.0f, 0.45f, 3};
 		constexpr NoiseParameters DENSITY_NOISE{0.028f, 2.0f, 0.5f, 4};
@@ -38,6 +40,10 @@ namespace voxel_game::world
 		constexpr float INLAND_CONTINENTALNESS = 0.52f;
 		constexpr float DEEP_OCEAN_HEIGHT = WATER_HEIGHT - 24.0f;
 		constexpr float COASTAL_SHELF_HEIGHT = WATER_HEIGHT - 10.0f;
+		constexpr float DEEP_OCEAN_START = 0.10f;
+		constexpr float DEEP_OCEAN_END = 0.30f;
+		constexpr float OCEAN_BASIN_MAX_DEPTH = 18.0f;
+		constexpr float SEAFLOOR_DETAIL_STRENGTH = 3.0f;
 		constexpr float COAST_HEIGHT = WATER_HEIGHT + 5.0f;
 		constexpr float HIGH_INLAND_HEIGHT = WATER_HEIGHT + 30.0f;
 		constexpr float COAST_MASK_CENTER = 0.445f;
@@ -147,6 +153,15 @@ namespace voxel_game::world
 		{
 			float shelf = glm::smoothstep(0.05f, OCEAN_CONTINENTALNESS, result.continentalness);
 			baseHeight = utils::lerp(DEEP_OCEAN_HEIGHT, COASTAL_SHELF_HEIGHT, shelf);
+			float deepOcean = 1.0f - glm::smoothstep(
+				DEEP_OCEAN_START, DEEP_OCEAN_END, result.continentalness);
+			float basinNoise = sampleNoise2(
+				m_noiseGenerator, warpedX + 53003.0f, warpedZ - 61001.0f, OCEAN_BASIN_NOISE);
+			float seafloorDetail = sampleNoise2(
+				m_noiseGenerator, warpedX - 47017.0f, warpedZ + 43003.0f, SEAFLOOR_DETAIL_NOISE)
+				* 2.0f - 1.0f;
+			baseHeight -= deepOcean * basinNoise * OCEAN_BASIN_MAX_DEPTH;
+			baseHeight += seafloorDetail * SEAFLOOR_DETAIL_STRENGTH;
 		}
 		else if (result.continentalness < INLAND_CONTINENTALNESS)
 		{

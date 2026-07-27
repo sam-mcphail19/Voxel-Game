@@ -9,6 +9,9 @@ namespace voxel_game
 			{world::BlockTypeId::GRASS, BlockPixel{30_uchar, 220_uchar, 100_uchar}},
 			{world::BlockTypeId::SAND, BlockPixel{200_uchar, 180_uchar, 130_uchar}},
 			{world::BlockTypeId::GRAVEL, BlockPixel{150_uchar, 150_uchar, 150_uchar}},
+			{world::BlockTypeId::MARSH_GRASS, BlockPixel{75_uchar, 115_uchar, 55_uchar}},
+			{world::BlockTypeId::MUD, BlockPixel{85_uchar, 55_uchar, 35_uchar}},
+			{world::BlockTypeId::RED_SANDSTONE, BlockPixel{190_uchar, 85_uchar, 45_uchar}},
 	};
 
 	NoiseTool::NoiseTool()
@@ -146,6 +149,8 @@ namespace voxel_game
 						case world::BiomeType::Desert: blockColor = { 225_uchar, 195_uchar, 105_uchar }; break;
 						case world::BiomeType::Mountains: blockColor = { 150_uchar, 150_uchar, 155_uchar }; break;
 						case world::BiomeType::Plains: blockColor = { 65_uchar, 190_uchar, 75_uchar }; break;
+						case world::BiomeType::Marsh: blockColor = { 55_uchar, 125_uchar, 85_uchar }; break;
+						case world::BiomeType::Badlands: blockColor = { 185_uchar, 115_uchar, 65_uchar }; break;
 						}
 					}
 					else

@@ -65,6 +65,30 @@ namespace voxel_game::world
         return BlockTypeId::STONE;
     }
 
+	static int marshHeight(int x, int z, NoiseGenerator& n) {
+		float variation = n.noise2(x, z, 0.025f, 2.0f, 0.45f, 2);
+		return WATER_HEIGHT + 1 + static_cast<int>(variation * 3.0f);
+	}
+
+	static BlockTypeId marshBlock(int x, int y, int z, int height) {
+		if (y == height)
+		{
+			return height <= WATER_HEIGHT ? BlockTypeId::MUD : BlockTypeId::MARSH_GRASS;
+		}
+		if (y > height - SOIL_DEPTH) return BlockTypeId::MUD;
+		return BlockTypeId::STONE;
+	}
+
+	static int badlandsHeight(int x, int z, NoiseGenerator& n) {
+		float variation = n.noise2(x, z, 0.018f, 2.0f, 0.5f, 3);
+		return WATER_HEIGHT + 12 + static_cast<int>(variation * 18.0f);
+	}
+
+	static BlockTypeId badlandsBlock(int x, int y, int z, int height) {
+		if (y >= height - SOIL_DEPTH) return BlockTypeId::RED_SANDSTONE;
+		return BlockTypeId::STONE;
+	}
+
     static const Biome PLAINS = {
         BiomeType::Plains,
         plainsHeight,
@@ -89,10 +113,24 @@ namespace voxel_game::world
         oceanBlock
     };
 
+	static const Biome MARSH = {
+		BiomeType::Marsh,
+		marshHeight,
+		marshBlock
+	};
+
+	static const Biome BADLANDS = {
+		BiomeType::Badlands,
+		badlandsHeight,
+		badlandsBlock
+	};
+
     const std::unordered_map<BiomeType, const Biome*> BIOMES = {
         { BiomeType::Plains,    &PLAINS },
         { BiomeType::Mountains, &MOUNTAINS },
         { BiomeType::Desert,    &DESERT },
         { BiomeType::Ocean,    &OCEAN },
+		{ BiomeType::Marsh,     &MARSH },
+		{ BiomeType::Badlands,  &BADLANDS },
     };
 };
