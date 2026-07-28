@@ -6,8 +6,10 @@
 #include <unordered_map>
 #include <utility>
 #include <memory>
+#include <vector>
 #include <glm/vec3.hpp>
 #include "block.hpp"
+#include "debugInfo.hpp"
 #include "chunkManager.hpp"
 #include "../constants.hpp"
 #include "../graphics/mesh.hpp"
@@ -36,7 +38,7 @@ namespace voxel_game::world
 	private:
 		BlockPos m_origin;
 		World* m_world;
-		BlockTypeId* m_blocks;
+		std::vector<uint8_t> m_blocks;
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_meshes = {};
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_transparentMeshes = {};
 		std::array<std::shared_ptr<g::Mesh>, CHUNK_LOD_LEVEL_COUNT> m_pendingMeshes = {};
@@ -53,14 +55,16 @@ namespace voxel_game::world
 		int getHighestWaterY(BlockPos blockPos, int lodScale);
 		BlockTypeId getBlockForLodOcclusion(BlockPos blockPos, ChunkManager& chunkManager);
 		void buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
-		void buildGreedyOpaqueMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
-		void buildTransparentMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
+		void buildGreedyOpaqueMeshForLod(int lodScale, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
+		void buildGreedyMeshForLod(int lodScale, bool waterOnly, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
+		void buildTransparentMeshForLod(int lodScale, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
 
 		void addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f), int lodScale = 1);
 		void addGreedyFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos blockPos, int width, int height, int lodScale, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
 
 	public:
 		Chunk(BlockPos chunkCoord, World* world);
+		~Chunk();
 		void updateMesh(ChunkManager& chunkManager);
 		void updateMesh(ChunkManager& chunkManager, ChunkLod lod);
 		void putBlock(Block block);
@@ -77,6 +81,8 @@ namespace voxel_game::world
 		std::shared_ptr<g::Mesh> getMesh(ChunkLod lod);
 		std::shared_ptr<g::Mesh> getTransparentMesh();
 		std::shared_ptr<g::Mesh> getTransparentMesh(ChunkLod lod);
+		bool hasAnyMesh();
+		void accumulateMemoryDiagnostics(MemoryDiagnostics& diagnostics);
 	};
 
 	int to1dIndex(int x, int y, int z);

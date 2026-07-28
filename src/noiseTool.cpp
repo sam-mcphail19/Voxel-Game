@@ -12,6 +12,15 @@ namespace voxel_game
 			{world::BlockTypeId::MARSH_GRASS, BlockPixel{75_uchar, 115_uchar, 55_uchar}},
 			{world::BlockTypeId::MUD, BlockPixel{85_uchar, 55_uchar, 35_uchar}},
 			{world::BlockTypeId::RED_SANDSTONE, BlockPixel{190_uchar, 85_uchar, 45_uchar}},
+			{world::BlockTypeId::SNOW, BlockPixel{240_uchar, 245_uchar, 250_uchar}},
+			{world::BlockTypeId::ICE, BlockPixel{155_uchar, 205_uchar, 245_uchar}},
+			{world::BlockTypeId::PODZOL, BlockPixel{90_uchar, 60_uchar, 35_uchar}},
+			{world::BlockTypeId::DRY_GRASS, BlockPixel{185_uchar, 165_uchar, 65_uchar}},
+			{world::BlockTypeId::RAINFOREST_GRASS, BlockPixel{25_uchar, 125_uchar, 45_uchar}},
+			{world::BlockTypeId::BASALT, BlockPixel{45_uchar, 45_uchar, 50_uchar}},
+			{world::BlockTypeId::LAVA, BlockPixel{245_uchar, 75_uchar, 15_uchar}},
+			{world::BlockTypeId::SALT, BlockPixel{235_uchar, 230_uchar, 215_uchar}},
+			{world::BlockTypeId::TERRACOTTA, BlockPixel{190_uchar, 85_uchar, 45_uchar}},
 	};
 
 	NoiseTool::NoiseTool()
@@ -151,6 +160,16 @@ namespace voxel_game
 						case world::BiomeType::Plains: blockColor = { 65_uchar, 190_uchar, 75_uchar }; break;
 						case world::BiomeType::Marsh: blockColor = { 55_uchar, 125_uchar, 85_uchar }; break;
 						case world::BiomeType::Badlands: blockColor = { 185_uchar, 115_uchar, 65_uchar }; break;
+						case world::BiomeType::SnowyTundra: blockColor = { 220_uchar, 230_uchar, 235_uchar }; break;
+						case world::BiomeType::Taiga: blockColor = { 50_uchar, 105_uchar, 65_uchar }; break;
+						case world::BiomeType::Savanna: blockColor = { 180_uchar, 170_uchar, 65_uchar }; break;
+						case world::BiomeType::RockyHighlands: blockColor = { 105_uchar, 105_uchar, 110_uchar }; break;
+						case world::BiomeType::Rainforest: blockColor = { 20_uchar, 115_uchar, 45_uchar }; break;
+						case world::BiomeType::Volcanic: blockColor = { 45_uchar, 40_uchar, 45_uchar }; break;
+						case world::BiomeType::SaltFlats: blockColor = { 235_uchar, 225_uchar, 205_uchar }; break;
+						case world::BiomeType::Mesa: blockColor = { 205_uchar, 95_uchar, 45_uchar }; break;
+						case world::BiomeType::Glacier: blockColor = { 145_uchar, 205_uchar, 235_uchar }; break;
+						case world::BiomeType::StonyCoast: blockColor = { 115_uchar, 120_uchar, 125_uchar }; break;
 						}
 					}
 					else

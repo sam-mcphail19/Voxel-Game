@@ -1,10 +1,16 @@
 #include "world.hpp"
+#include "worldProfiler.hpp"
 
 namespace voxel_game::world
 {
 	namespace
 	{
 		const std::array<int, CHUNK_LOD_LEVEL_COUNT> lodScales = { 1, 2, 4 };
+		constexpr uint8_t BITS_PER_BLOCK = 5;
+		constexpr uint16_t BLOCK_ID_MASK = (1u << BITS_PER_BLOCK) - 1u;
+
+		static_assert(static_cast<uint8_t>(BlockTypeId::TERRACOTTA) <= BLOCK_ID_MASK,
+			"Packed chunk storage supports at most 32 block types");
 
 		int toLodIndex(ChunkLod lod)
 		{
@@ -19,6 +25,16 @@ namespace voxel_game::world
 			}
 
 			return isTransparent(neighbour);
+		}
+
+		size_t representativeIndex(BlockPos blockPos, int lodScale)
+		{
+			const int xCells = CHUNK_SIZE / lodScale;
+			const int yCells = CHUNK_HEIGHT / lodScale;
+			const int cellX = blockPos.x / lodScale;
+			const int cellY = blockPos.y / lodScale;
+			const int cellZ = blockPos.z / lodScale;
+			return static_cast<size_t>(cellX + xCells * (cellY + yCells * cellZ));
 		}
 
 		g::AtlasTexture getTextureForFace(BlockTypeId blockTypeId, g::Direction direction, int lodScale)
@@ -69,6 +85,24 @@ namespace voxel_game::world
 				return g::AtlasTexture::MUD;
 			case BlockTypeId::RED_SANDSTONE:
 				return g::AtlasTexture::RED_SANDSTONE;
+			case BlockTypeId::SNOW:
+				return g::AtlasTexture::SNOW;
+			case BlockTypeId::ICE:
+				return g::AtlasTexture::ICE;
+			case BlockTypeId::PODZOL:
+				return g::AtlasTexture::PODZOL;
+			case BlockTypeId::DRY_GRASS:
+				return g::AtlasTexture::DRY_GRASS;
+			case BlockTypeId::RAINFOREST_GRASS:
+				return g::AtlasTexture::RAINFOREST_GRASS;
+			case BlockTypeId::BASALT:
+				return g::AtlasTexture::BASALT;
+			case BlockTypeId::LAVA:
+				return g::AtlasTexture::LAVA;
+			case BlockTypeId::SALT:
+				return g::AtlasTexture::SALT;
+			case BlockTypeId::TERRACOTTA:
+				return g::AtlasTexture::TERRACOTTA;
 			default:
 				return g::AtlasTexture::STONE;
 			}
@@ -76,9 +110,14 @@ namespace voxel_game::world
 	}
 
 	Chunk::Chunk(BlockPos chunkCoord, World* world)
-		: m_world(world), m_blocks(new BlockTypeId[CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT])
+		: m_world(world),
+		  m_blocks((CHUNK_BLOCK_COUNT * BITS_PER_BLOCK + 7) / 8 + 1, 0)
 	{
 		m_origin = { chunkCoord.x * CHUNK_SIZE, chunkCoord.y * CHUNK_HEIGHT, chunkCoord.z * CHUNK_SIZE };
+	}
+
+	Chunk::~Chunk()
+	{
 	}
 
 	void Chunk::updateMesh(ChunkManager& chunkManager)
@@ -88,7 +127,20 @@ namespace voxel_game::world
 
 	void Chunk::updateMesh(ChunkManager& chunkManager, ChunkLod lod)
 	{
+		ScopedProfileCounterBatch counterBatch;
 		int lodIndex = toLodIndex(lod);
+		switch (lod)
+		{
+		case ChunkLod::FULL:
+			WorldProfiler::instance().increment(ProfileCounter::FullLodBuilds);
+			break;
+		case ChunkLod::HALF:
+			WorldProfiler::instance().increment(ProfileCounter::HalfLodBuilds);
+			break;
+		case ChunkLod::QUARTER:
+			WorldProfiler::instance().increment(ProfileCounter::QuarterLodBuilds);
+			break;
+		}
 		std::shared_ptr<g::Mesh> newMesh;
 		std::shared_ptr<g::Mesh> newTransparentMesh;
 
@@ -128,12 +180,47 @@ namespace voxel_game::world
 
 	void Chunk::buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
 	{
-		buildGreedyOpaqueMeshForLod(lodScale, chunkManager, vertices, indices);
-		buildTransparentMeshForLod(lodScale, chunkManager, transparentVertices, transparentIndices);
+		const int xCells = CHUNK_SIZE / lodScale;
+		const int yCells = CHUNK_HEIGHT / lodScale;
+		const int zCells = CHUNK_SIZE / lodScale;
+		std::vector<BlockTypeId> representatives(
+			static_cast<size_t>(xCells * yCells * zCells), BlockTypeId::AIR);
+		{
+			ScopedProfileStage timer(ProfileStage::RepresentativeGridBuild);
+			for (int cellZ = 0; cellZ < zCells; ++cellZ)
+			{
+				for (int cellY = 0; cellY < yCells; ++cellY)
+				{
+					for (int cellX = 0; cellX < xCells; ++cellX)
+					{
+						const BlockPos blockPos{
+							cellX * lodScale,
+							cellY * lodScale,
+							cellZ * lodScale
+						};
+						representatives[representativeIndex(blockPos, lodScale)] =
+							getRepresentativeBlockType(blockPos, lodScale);
+					}
+				}
+			}
+		}
+
+		buildGreedyOpaqueMeshForLod(lodScale, representatives, chunkManager, vertices, indices);
+		{
+			ScopedProfileStage timer(ProfileStage::WaterMeshing);
+			buildTransparentMeshForLod(lodScale, representatives, chunkManager, transparentVertices, transparentIndices);
+		}
 	}
 
-	void Chunk::buildGreedyOpaqueMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
+	void Chunk::buildGreedyOpaqueMeshForLod(int lodScale, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
 	{
+		buildGreedyMeshForLod(lodScale, false, representatives, chunkManager, vertices, indices);
+	}
+
+	void Chunk::buildGreedyMeshForLod(int lodScale, bool waterOnly, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
+	{
+		uint64_t maskNanoseconds = 0;
+		uint64_t mergeNanoseconds = 0;
 		for (int dirIndex = 0; dirIndex < 6; dirIndex++)
 		{
 			g::Direction dir = (g::Direction)dirIndex;
@@ -153,6 +240,7 @@ namespace voxel_game::world
 
 			for (int slice = 0; slice < sliceCells; slice++)
 			{
+				const auto maskStart = std::chrono::steady_clock::now();
 				std::fill(mask.begin(), mask.end(), BlockTypeId::AIR);
 
 				for (int v = 0; v < vCells; v++)
@@ -179,8 +267,8 @@ namespace voxel_game::world
 							break;
 						}
 
-						BlockTypeId blockTypeId = getRepresentativeBlockType(blockPos, lodScale);
-						if (!isSolid(blockTypeId))
+						BlockTypeId blockTypeId = representatives[representativeIndex(blockPos, lodScale)];
+						if (waterOnly ? blockTypeId != BlockTypeId::WATER : !isSolid(blockTypeId))
 						{
 							continue;
 						}
@@ -191,9 +279,17 @@ namespace voxel_game::world
 						if (visible)
 						{
 							mask[u + v * uCells] = blockTypeId;
+							if (!waterOnly)
+							{
+								WorldProfiler::instance().increment(ProfileCounter::CandidateFaces);
+							}
 						}
 					}
 				}
+				const auto mergeStart = std::chrono::steady_clock::now();
+				maskNanoseconds += static_cast<uint64_t>(
+					std::chrono::duration_cast<std::chrono::nanoseconds>(
+						mergeStart - maskStart).count());
 
 				for (int v = 0; v < vCells; v++)
 				{
@@ -252,6 +348,10 @@ namespace voxel_game::world
 						}
 
 						addGreedyFaceToMesh(blockTypeId, dir, blockPos, width, height, lodScale, vertices, indices);
+						if (!waterOnly)
+						{
+							WorldProfiler::instance().increment(ProfileCounter::EmittedGreedyQuads);
+						}
 
 						for (int y = 0; y < height; y++)
 						{
@@ -264,12 +364,29 @@ namespace voxel_game::world
 						u += width;
 					}
 				}
+				mergeNanoseconds += static_cast<uint64_t>(
+					std::chrono::duration_cast<std::chrono::nanoseconds>(
+						std::chrono::steady_clock::now() - mergeStart).count());
 			}
+		}
+		if (!waterOnly)
+		{
+			WorldProfiler::instance().record(ProfileStage::OpaqueMaskBuild, maskNanoseconds);
+			WorldProfiler::instance().record(ProfileStage::GreedyMergeAndEmit, mergeNanoseconds);
 		}
 	}
 
-	void Chunk::buildTransparentMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
+	void Chunk::buildTransparentMeshForLod(int lodScale, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices)
 	{
+		if (lodScale == 1)
+		{
+			buildGreedyMeshForLod(lodScale, true, representatives, chunkManager, transparentVertices, transparentIndices);
+			return;
+		}
+
+		// Coarse water cells use their highest contained water block and remain
+		// one block tall. Merging cells with different heights would create
+		// sloped or floating sheets, so coarse LODs retain the sampled path.
 		for (int z = 0; z < CHUNK_SIZE; z += lodScale)
 		{
 			for (int y = 0; y < CHUNK_HEIGHT; y += lodScale)
@@ -279,7 +396,7 @@ namespace voxel_game::world
 					BlockPos blockPos = { x, y, z };
 
 					glm::vec3 blockPosVec = toVec3(blockPos);
-					BlockTypeId blockTypeId = getRepresentativeBlockType(blockPos, lodScale);
+					BlockTypeId blockTypeId = representatives[representativeIndex(blockPos, lodScale)];
 
 					if (blockTypeId != BlockTypeId::WATER)
 					{
@@ -398,12 +515,29 @@ namespace voxel_game::world
 
 	void Chunk::putBlock(Block block)
 	{
-		m_blocks[to1dIndex(block.pos)] = block.type;
+		const int blockIndex = to1dIndex(block.pos);
+		const size_t bitIndex = static_cast<size_t>(blockIndex) * BITS_PER_BLOCK;
+		const size_t byteIndex = bitIndex / 8;
+		const int bitOffset = static_cast<int>(bitIndex % 8);
+		uint16_t packed = static_cast<uint16_t>(m_blocks[byteIndex])
+			| (static_cast<uint16_t>(m_blocks[byteIndex + 1]) << 8);
+		const uint16_t shiftedMask = static_cast<uint16_t>(BLOCK_ID_MASK << bitOffset);
+		packed = static_cast<uint16_t>((packed & ~shiftedMask)
+			| ((static_cast<uint16_t>(block.type) & BLOCK_ID_MASK) << bitOffset));
+		m_blocks[byteIndex] = static_cast<uint8_t>(packed & 0xff);
+		m_blocks[byteIndex + 1] = static_cast<uint8_t>(packed >> 8);
 	}
 
 	BlockTypeId Chunk::getBlock(int x, int y, int z)
 	{
-		return m_blocks[to1dIndex(x, y, z)];
+		const int blockIndex = to1dIndex(x, y, z);
+		const size_t bitIndex = static_cast<size_t>(blockIndex) * BITS_PER_BLOCK;
+		const size_t byteIndex = bitIndex / 8;
+		const int bitOffset = static_cast<int>(bitIndex % 8);
+		const uint16_t packed = static_cast<uint16_t>(m_blocks[byteIndex])
+			| (static_cast<uint16_t>(m_blocks[byteIndex + 1]) << 8);
+		const uint8_t value = static_cast<uint8_t>((packed >> bitOffset) & BLOCK_ID_MASK);
+		return static_cast<BlockTypeId>(value);
 	}
 
 	BlockTypeId Chunk::getBlock(BlockPos blockPos)
@@ -439,7 +573,7 @@ namespace voxel_game::world
 	bool Chunk::tryQueueMeshBuild(ChunkLod lod)
 	{
 		int lodIndex = toLodIndex(lod);
-		if (lod == ChunkLod::FULL || m_meshes[lodIndex] != nullptr || m_pendingMeshReady[lodIndex] || m_lodBuildQueued[lodIndex])
+		if (m_meshes[lodIndex] != nullptr || m_pendingMeshReady[lodIndex] || m_lodBuildQueued[lodIndex])
 		{
 			return false;
 		}
@@ -491,11 +625,8 @@ namespace voxel_game::world
 
 			{
 				std::unique_lock<std::mutex> lock = acquireLock();
-				if (lodIndex == toLodIndex(ChunkLod::FULL))
-				{
-					m_meshes.fill(nullptr);
-					m_transparentMeshes.fill(nullptr);
-				}
+				m_meshes.fill(nullptr);
+				m_transparentMeshes.fill(nullptr);
 				m_meshes[lodIndex] = std::move(mesh);
 				m_transparentMeshes[lodIndex] = std::move(transparentMesh);
 				m_pendingMeshes[lodIndex] = nullptr;
@@ -512,7 +643,18 @@ namespace voxel_game::world
 	std::shared_ptr<g::Mesh> Chunk::getMesh(ChunkLod lod)
 	{
 		std::shared_ptr<g::Mesh> mesh = m_meshes[toLodIndex(lod)];
-		return mesh ? mesh : m_meshes[toLodIndex(ChunkLod::FULL)];
+		if (mesh)
+		{
+			return mesh;
+		}
+		for (const std::shared_ptr<g::Mesh>& fallback : m_meshes)
+		{
+			if (fallback)
+			{
+				return fallback;
+			}
+		}
+		return nullptr;
 	}
 
 	std::shared_ptr<g::Mesh> Chunk::getTransparentMesh()
@@ -523,7 +665,74 @@ namespace voxel_game::world
 	std::shared_ptr<g::Mesh> Chunk::getTransparentMesh(ChunkLod lod)
 	{
 		std::shared_ptr<g::Mesh> mesh = m_transparentMeshes[toLodIndex(lod)];
-		return mesh ? mesh : m_transparentMeshes[toLodIndex(ChunkLod::FULL)];
+		if (mesh)
+		{
+			return mesh;
+		}
+		for (const std::shared_ptr<g::Mesh>& fallback : m_transparentMeshes)
+		{
+			if (fallback)
+			{
+				return fallback;
+			}
+		}
+		return nullptr;
+	}
+
+	bool Chunk::hasAnyMesh()
+	{
+		for (const std::shared_ptr<g::Mesh>& mesh : m_meshes)
+		{
+			if (mesh)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void Chunk::accumulateMemoryDiagnostics(MemoryDiagnostics& diagnostics)
+	{
+		std::unique_lock<std::mutex> lock = acquireLock();
+		diagnostics.voxelStorageBytes += m_blocks.size() * sizeof(uint8_t);
+
+		auto addResidentMesh = [&](const std::shared_ptr<g::Mesh>& mesh)
+		{
+			if (!mesh)
+			{
+				return;
+			}
+			diagnostics.residentMeshCount++;
+			diagnostics.meshVertexCount += mesh->getVertexCount();
+			diagnostics.meshIndexCount += mesh->getIndexCount();
+			diagnostics.estimatedGpuMeshBytes += mesh->getEstimatedGpuBytes();
+		};
+		auto addPendingMesh = [&](const std::shared_ptr<g::Mesh>& mesh)
+		{
+			if (!mesh)
+			{
+				return;
+			}
+			diagnostics.pendingMeshCount++;
+			diagnostics.pendingCpuMeshBytes += mesh->getCpuStorageBytes();
+		};
+
+		for (const std::shared_ptr<g::Mesh>& mesh : m_meshes)
+		{
+			addResidentMesh(mesh);
+		}
+		for (const std::shared_ptr<g::Mesh>& mesh : m_transparentMeshes)
+		{
+			addResidentMesh(mesh);
+		}
+		for (const std::shared_ptr<g::Mesh>& mesh : m_pendingMeshes)
+		{
+			addPendingMesh(mesh);
+		}
+		for (const std::shared_ptr<g::Mesh>& mesh : m_pendingTransparentMeshes)
+		{
+			addPendingMesh(mesh);
+		}
 	}
 
 	int to1dIndex(int x, int y, int z)
@@ -558,6 +767,7 @@ namespace voxel_game::world
 
 	bool Chunk::isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager)
 	{
+		WorldProfiler::instance().increment(ProfileCounter::FaceVisibilityChecks);
 		BlockPos neighbourPos = face.pos + toBlockPos(getNormal(face.dir));
 		BlockTypeId neighbour;
 
@@ -567,6 +777,7 @@ namespace voxel_game::world
 		}
 		if (isBlockInBounds(neighbourPos))
 		{
+			WorldProfiler::instance().increment(ProfileCounter::LocalMeshingBlockReads);
 			neighbour = getBlock(neighbourPos);
 		}
 		else
@@ -575,10 +786,12 @@ namespace voxel_game::world
 
 			if (neighbourChunk == nullptr)
 			{
+				WorldProfiler::instance().increment(ProfileCounter::WorldFallbackReads);
 				neighbour = m_world->getBlock(m_origin + neighbourPos);
 			}
 			else 
 			{
+				WorldProfiler::instance().increment(ProfileCounter::NeighbourChunkReads);
 				// TODO: Should we just call world.getBlock in this case too?
 				BlockPos neighbourLocalPos = worldPosToLocalPos(m_origin + neighbourPos);
 				neighbour = neighbourChunk->getBlock(neighbourLocalPos);
@@ -595,6 +808,7 @@ namespace voxel_game::world
 
 	bool Chunk::isLodFaceVisible(const BlockTypeId& blockTypeId, const Face& face, int lodScale, ChunkManager& chunkManager)
 	{
+		WorldProfiler::instance().increment(ProfileCounter::FaceVisibilityChecks);
 		BlockPos start = face.pos;
 		BlockPos end = face.pos + BlockPos{ lodScale, lodScale, lodScale };
 		if (blockTypeId == BlockTypeId::WATER && lodScale > 1)
@@ -677,6 +891,7 @@ namespace voxel_game::world
 
 	BlockTypeId Chunk::getRepresentativeBlockType(BlockPos blockPos, int lodScale)
 	{
+		WorldProfiler::instance().increment(ProfileCounter::RepresentativeBlockSamples);
 		bool hasWater = false;
 		int maxX = std::min(blockPos.x + lodScale, CHUNK_SIZE);
 		int maxY = std::min(blockPos.y + lodScale, CHUNK_HEIGHT);
@@ -689,6 +904,7 @@ namespace voxel_game::world
 				for (int z = blockPos.z; z < maxZ; z++)
 				{
 					BlockTypeId blockTypeId = getBlock(x, y, z);
+					WorldProfiler::instance().increment(ProfileCounter::LocalMeshingBlockReads);
 					if (blockTypeId == BlockTypeId::WATER)
 					{
 						hasWater = true;
@@ -716,6 +932,7 @@ namespace voxel_game::world
 			{
 				for (int z = blockPos.z; z < maxZ; z++)
 				{
+					WorldProfiler::instance().increment(ProfileCounter::LocalMeshingBlockReads);
 					if (getBlock(x, y, z) == BlockTypeId::WATER)
 					{
 						return y;
@@ -736,6 +953,7 @@ namespace voxel_game::world
 
 		if (isBlockInBounds(blockPos))
 		{
+			WorldProfiler::instance().increment(ProfileCounter::LocalMeshingBlockReads);
 			return getBlock(blockPos);
 		}
 
@@ -748,9 +966,11 @@ namespace voxel_game::world
 		Chunk* neighbourChunk = chunkManager.getChunk(neighbourChunkCoord);
 		if (neighbourChunk != nullptr)
 		{
+			WorldProfiler::instance().increment(ProfileCounter::NeighbourChunkReads);
 			return neighbourChunk->getBlock(worldPosToLocalPos(worldPos));
 		}
 
+		WorldProfiler::instance().increment(ProfileCounter::WorldFallbackReads);
 		return m_world->getBlock(worldPos);
 	}
 }

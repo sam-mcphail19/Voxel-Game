@@ -14,7 +14,17 @@ namespace voxel_game::world {
 		Desert,
 		Ocean,
 		Marsh,
-		Badlands
+		Badlands,
+		SnowyTundra,
+		Taiga,
+		Savanna,
+		RockyHighlands,
+		Rainforest,
+		Volcanic,
+		SaltFlats,
+		Mesa,
+		Glacier,
+		StonyCoast,
 	};
 
 	struct Biome {
@@ -41,6 +51,26 @@ namespace voxel_game::world {
 			return "Marsh";
 		case BiomeType::Badlands:
 			return "Badlands";
+		case BiomeType::SnowyTundra:
+			return "Snowy Tundra";
+		case BiomeType::Taiga:
+			return "Taiga";
+		case BiomeType::Savanna:
+			return "Savanna";
+		case BiomeType::RockyHighlands:
+			return "Rocky Highlands";
+		case BiomeType::Rainforest:
+			return "Rainforest";
+		case BiomeType::Volcanic:
+			return "Volcanic";
+		case BiomeType::SaltFlats:
+			return "Salt Flats";
+		case BiomeType::Mesa:
+			return "Mesa";
+		case BiomeType::Glacier:
+			return "Glacier";
+		case BiomeType::StonyCoast:
+			return "Stony Coast";
 		}
 
 		return "Biome not found";

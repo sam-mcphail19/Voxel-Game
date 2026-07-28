@@ -3,6 +3,7 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <chrono>
 #include "block.hpp"
 #include "debugInfo.hpp"
 #include "chunkManager.hpp"
@@ -33,11 +34,15 @@ namespace voxel_game::world
 		utils::ThreadPool m_threadPool;
 		std::set<BlockPos> m_generatingChunks;
 		std::mutex m_generatingChunksMutex;
+		std::vector<Chunk*> m_retiredChunks;
 		g::Shader* m_shader;
 
 		Player m_player;
 		BlockPos m_blockBeingBroken;
 		int m_breakBlockProgress = 0;
+		MemoryDiagnostics m_memoryDiagnostics;
+		GenerationDiagnostics m_generationDiagnostics;
+		std::chrono::steady_clock::time_point m_nextMemoryDiagnosticsUpdate = {};
 
 		void removeBlock(const BlockPos& blockPos);
 		void putBlock(const Block& block);
@@ -53,15 +58,19 @@ namespace voxel_game::world
 		void updateChunkMesh(Chunk* chunk, ChunkLod lod);
 		void updateChunkMeshAsync(Chunk* chunk);
 		void updateChunkMeshAsync(Chunk* chunk, ChunkLod lod);
-		void generateChunk(BlockPos chunkCoord);
+		void generateChunk(BlockPos chunkCoord, ChunkLod lod);
 		void generateChunkAsync(BlockPos chunkCoord);
 
 		std::vector<BlockPos> getChunksToGenerate();
 		bool allChunksGenerated();
 
 		ChunkLod getChunkLodForPlayer(Chunk* chunk, const Player& player);
+		ChunkLod getChunkLodForCoord(BlockPos chunkCoord, const Player& player);
 		void queueVisibleChunkLodBuild(Chunk* chunk);
 		bool chunkIsFurtherFromPlayer(Chunk* chunk1, Chunk* chunk2, const Player& player);
+		void retireFarChunks(BlockPos playerChunkCoord);
+		void deleteRetiredChunksIfIdle();
+		MemoryDiagnostics collectMemoryDiagnostics();
 
 	public:
 		World(long seed, g::Shader* shader, Player &player);

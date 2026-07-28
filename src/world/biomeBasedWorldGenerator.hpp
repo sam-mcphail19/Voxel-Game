@@ -49,8 +49,10 @@ namespace voxel_game::world
 
 		TerrainSample sampleTerrain(int x, int z);
 		float calculateDensity(const TerrainSample& terrain, int x, int y, int z);
+		float calculateDensity(const TerrainSample& terrain, const CaveColumnSample& caveColumn, int x, int y, int z);
 		bool isWater(const TerrainSample& terrain, int y) const;
 		int calculateSurfaceHeight(const TerrainSample& terrain, int x, int z);
+		int calculateSurfaceHeight(const TerrainSample& terrain, const CaveColumnSample& caveColumn, int x, int z);
 		float calculateSlope(int x, int z);
 		BlockTypeId getSurfaceBlockType(const Biome* biome, const TerrainSample& terrain, float slope, int x, int z, int surfaceHeight);
 		std::vector<BiomeWeight> buildWeights(const TerrainSample& terrain);

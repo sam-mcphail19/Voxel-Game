@@ -4,13 +4,14 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <cstdint>
 #include <glm/vec3.hpp>
 #include "../physics/transform.hpp"
 
 namespace voxel_game::world
 {
 	// TODO: move to some kind of config so game doesnt need to be recompiled to add block types
-	enum class BlockTypeId
+	enum class BlockTypeId : uint8_t
 	{
 		NONE,
 		AIR,
@@ -25,6 +26,15 @@ namespace voxel_game::world
 		MARSH_GRASS,
 		MUD,
 		RED_SANDSTONE,
+		SNOW,
+		ICE,
+		PODZOL,
+		DRY_GRASS,
+		RAINFOREST_GRASS,
+		BASALT,
+		LAVA,
+		SALT,
+		TERRACOTTA,
 	};
 
 	std::string toString(BlockTypeId id);

@@ -23,8 +23,13 @@ namespace voxel_game::utils
 				}
 				job = m_jobs.front();
 				m_jobs.pop();
+				m_activeJobs++;
 			}
 			job();
+			{
+				std::unique_lock<std::mutex> lock(m_queueMutex);
+				m_activeJobs--;
+			}
 		}
 	}
 
@@ -41,9 +46,14 @@ namespace voxel_game::utils
 		bool poolbusy;
 		{
 			std::unique_lock<std::mutex> lock(m_queueMutex);
-			poolbusy = !m_jobs.empty();
+			poolbusy = !m_jobs.empty() || m_activeJobs > 0;
 		}
 		return poolbusy;
+	}
+
+	ThreadPoolStats ThreadPool::getStats() {
+		std::unique_lock<std::mutex> lock(m_queueMutex);
+		return {m_activeJobs, m_jobs.size()};
 	}
 
 	void ThreadPool::stop() {

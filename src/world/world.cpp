@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include "worldProfiler.hpp"
 #include "../graphics/frustum.hpp"
 
 namespace voxel_game::world
@@ -12,28 +13,42 @@ namespace voxel_game::world
 	World::~World()
 	{
 		m_threadPool.stop();
+		for (Chunk* chunk : m_retiredChunks)
+		{
+			delete chunk;
+		}
 	}
 
 	void World::generate()
 	{
 		const auto start = std::chrono::system_clock::now();
-		int queuedChunks = 0;
 		BlockPos initialChunkCoord = getChunkCoord(toBlockPos(m_player.getPos()));
+		std::vector<BlockPos> initialChunks;
 
 		for (int x = -INITIAL_CHUNK_RENDER_DISTANCE; x <= INITIAL_CHUNK_RENDER_DISTANCE; x++)
 		{
 			for (int z = -INITIAL_CHUNK_RENDER_DISTANCE; z <= INITIAL_CHUNK_RENDER_DISTANCE; z++)
 			{
-				generateChunkAsync({ initialChunkCoord.x + x, initialChunkCoord.y, initialChunkCoord.z + z });
-				queuedChunks++;
+				initialChunks.push_back(
+					{initialChunkCoord.x + x, initialChunkCoord.y, initialChunkCoord.z + z});
 			}
 		}
 
-		log::info("Queued " + std::to_string(queuedChunks) + " chunks for initial world generation");
-
-		while (!allChunksGenerated())
+		log::info("Generating " + std::to_string(initialChunks.size())
+			+ " initial chunks in batches of " + std::to_string(CHUNK_GENERATION_BATCH_SIZE));
+		for (size_t batchStart = 0; batchStart < initialChunks.size();
+			batchStart += CHUNK_GENERATION_BATCH_SIZE)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			size_t batchEnd = std::min(
+				batchStart + CHUNK_GENERATION_BATCH_SIZE, initialChunks.size());
+			for (size_t i = batchStart; i < batchEnd; ++i)
+			{
+				generateChunkAsync(initialChunks[i]);
+			}
+			while (!allChunksGenerated())
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
 		}
 
 		const auto end = std::chrono::system_clock::now();
@@ -103,6 +118,10 @@ namespace voxel_game::world
 
 		m_player.setPos(m_player.getPos() + input.movement);
 
+		BlockPos playerChunkCoord = getChunkCoord(toBlockPos(m_player.getPos()));
+		retireFarChunks(playerChunkCoord);
+		deleteRetiredChunksIfIdle();
+
 		std::vector<BlockPos> chunksToGenerate = getChunksToGenerate();
 
 		for (BlockPos pos : chunksToGenerate)
@@ -127,11 +146,36 @@ namespace voxel_game::world
 			log::info("----------------------------");
 		}
 
-		return DebugInfo{
-			playerPos.x,
-			playerPos.y,
-			playerPos.z,
-		};
+		const auto now = std::chrono::steady_clock::now();
+		if (now >= m_nextMemoryDiagnosticsUpdate)
+		{
+			m_memoryDiagnostics = collectMemoryDiagnostics();
+			m_generationDiagnostics = WorldProfiler::instance().takeSnapshot();
+			const utils::ThreadPoolStats threadStats = m_threadPool.getStats();
+			m_generationDiagnostics.activeWorkerCount = threadStats.activeJobs;
+			m_generationDiagnostics.queuedJobCount = threadStats.queuedJobs;
+			m_nextMemoryDiagnosticsUpdate = now + std::chrono::seconds(1);
+		}
+
+		DebugInfo debugInfo;
+		debugInfo.x = playerPos.x;
+		debugInfo.y = playerPos.y;
+		debugInfo.z = playerPos.z;
+		debugInfo.memory = m_memoryDiagnostics;
+		debugInfo.generation = m_generationDiagnostics;
+		return debugInfo;
+	}
+
+	MemoryDiagnostics World::collectMemoryDiagnostics()
+	{
+		MemoryDiagnostics diagnostics;
+		std::vector<Chunk*> chunks = m_chunkManager.getChunks();
+		diagnostics.loadedChunkCount = chunks.size();
+		for (Chunk* chunk : chunks)
+		{
+			chunk->accumulateMemoryDiagnostics(diagnostics);
+		}
+		return diagnostics;
 	}
 
 	std::vector<Chunk*> World::getVisibleChunks()
@@ -140,7 +184,7 @@ namespace voxel_game::world
 		std::array<g::Plane, 6> frustum = g::buildCameraFrustum(m_player.getCamera());
 		for (Chunk* chunk : m_chunkManager.getChunks())
 		{
-			if (chunk->getMesh() != nullptr && m_player.chunkIsVisible(chunk))
+			if (chunk->hasAnyMesh() && m_player.chunkIsVisible(chunk))
 			{
 				if (g::chunkIntersectsFrustum(chunk, frustum))
 				{
@@ -161,6 +205,7 @@ namespace voxel_game::world
 
 	int World::uploadPendingMeshes()
 	{
+		const auto uploadStart = std::chrono::steady_clock::now();
 		int uploads = 0;
 		for (Chunk* chunk : m_chunkManager.getChunks())
 		{
@@ -172,6 +217,13 @@ namespace voxel_game::world
 			uploads += chunk->uploadPendingMeshes();
 		}
 
+		if (uploads > 0)
+		{
+			WorldProfiler::instance().record(
+				ProfileStage::MeshUpload,
+				static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+					std::chrono::steady_clock::now() - uploadStart).count()));
+		}
 		return uploads;
 	}
 
@@ -347,14 +399,15 @@ namespace voxel_game::world
 		m_threadPool.queueJob(job);
 	}
 
-	void World::generateChunk(BlockPos chunkCoord)
+	void World::generateChunk(BlockPos chunkCoord, ChunkLod lod)
 	{
+		ScopedProfileStage timer(ProfileStage::ChunkGeneration);
 		Chunk* chunk = new Chunk(chunkCoord, this);
 		m_worldGenerator.generateChunkData(*chunk);
 
 		m_chunkManager.putChunk(chunkCoord, chunk);
 
-		updateChunkMesh(chunk);
+		updateChunkMesh(chunk, lod);
 	}
 
 	void World::generateChunkAsync(BlockPos chunkCoord)
@@ -364,9 +417,10 @@ namespace voxel_game::world
 			m_generatingChunks.insert(chunkCoord);
 		}
 
-		const std::function<void()>& job = [&, chunkCoord]()
+		const ChunkLod lod = getChunkLodForCoord(chunkCoord, m_player);
+		const std::function<void()>& job = [&, chunkCoord, lod]()
 			{
-				generateChunk(chunkCoord);
+				generateChunk(chunkCoord, lod);
 
 				std::unique_lock<std::mutex> lock(m_generatingChunksMutex);
 				if (m_generatingChunks.contains(chunkCoord))
@@ -444,7 +498,16 @@ namespace voxel_game::world
 
 	ChunkLod World::getChunkLodForPlayer(Chunk* chunk, const Player& player)
 	{
-		BlockPos chunkCenter = chunk->getOrigin() + BlockPos{ CHUNK_SIZE / 2, 0, CHUNK_SIZE / 2 };
+		return getChunkLodForCoord(chunk->getChunkCoord(), player);
+	}
+
+	ChunkLod World::getChunkLodForCoord(BlockPos chunkCoord, const Player& player)
+	{
+		BlockPos chunkCenter = {
+			chunkCoord.x * CHUNK_SIZE + CHUNK_SIZE / 2,
+			chunkCoord.y * CHUNK_HEIGHT,
+			chunkCoord.z * CHUNK_SIZE + CHUNK_SIZE / 2
+		};
 		glm::vec3 playerPos = player.getPos();
 		float x = playerPos.x - chunkCenter.x;
 		float z = playerPos.z - chunkCenter.z;
@@ -464,11 +527,6 @@ namespace voxel_game::world
 	void World::queueVisibleChunkLodBuild(Chunk* chunk)
 	{
 		ChunkLod lod = getChunkLodForPlayer(chunk, m_player);
-		if (lod == ChunkLod::FULL)
-		{
-			return;
-		}
-
 		{
 			std::unique_lock<std::mutex> lock = chunk->acquireLock();
 			if (!chunk->tryQueueMeshBuild(lod))
@@ -489,6 +547,26 @@ namespace voxel_game::world
 		float chunk2Dist = glm::length(player.getPos() - toVec3(chunk2Center));
 
 		return chunk1Dist > chunk2Dist;
+	}
+
+	void World::retireFarChunks(BlockPos playerChunkCoord)
+	{
+		std::vector<Chunk*> removed =
+			m_chunkManager.removeChunksOutside(playerChunkCoord, CHUNK_UNLOAD_DISTANCE);
+		m_retiredChunks.insert(m_retiredChunks.end(), removed.begin(), removed.end());
+	}
+
+	void World::deleteRetiredChunksIfIdle()
+	{
+		// Mesh and generation jobs currently use raw chunk pointers. Retired
+		// chunks leave the active map immediately, but their storage is released
+		// only after all queued and active jobs have finished.
+		if (m_threadPool.busy()) return;
+		for (Chunk* chunk : m_retiredChunks)
+		{
+			delete chunk;
+		}
+		m_retiredChunks.clear();
 	}
 
 	BlockPos worldPosToLocalPos(const BlockPos& worldPos)

@@ -1,4 +1,5 @@
 #include "terrainGenerator.hpp"
+#include "worldProfiler.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -229,11 +230,16 @@ namespace voxel_game::world
 	{
 		float baseDensity = terrain.height - static_cast<float>(y);
 		float maximumDisplacement = terrain.densityStrength + terrain.formationStrength;
-		if (baseDensity < -maximumDisplacement) return baseDensity;
+		if (baseDensity < -maximumDisplacement || baseDensity > maximumDisplacement)
+		{
+			WorldProfiler::instance().increment(ProfileCounter::TerrainDensityFarRejections);
+			return baseDensity;
+		}
 
 		float density = baseDensity;
 		if (baseDensity <= maximumDisplacement)
 		{
+			WorldProfiler::instance().increment(ProfileCounter::Terrain3dNoiseSamples);
 			float densityNoise = m_noiseGenerator.noise3(
 				x + 3107, y - 1973, z + 7919,
 				DENSITY_NOISE.scale, DENSITY_NOISE.lacunarity,
@@ -242,6 +248,7 @@ namespace voxel_game::world
 		}
 		if (terrain.formationStrength > 0.01f)
 		{
+			WorldProfiler::instance().increment(ProfileCounter::Terrain3dNoiseSamples);
 			float formationNoise = m_noiseGenerator.noise3(
 				x - 15001.0f, y * FORMATION_VERTICAL_SCALE + 9000.0f, z + 19001.0f,
 				FORMATION_NOISE.scale, FORMATION_NOISE.lacunarity,

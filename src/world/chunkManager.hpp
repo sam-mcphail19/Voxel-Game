@@ -18,9 +18,11 @@ namespace voxel_game::world
 
 	public:
 		ChunkManager();
+		~ChunkManager();
 		void putChunk(BlockPos chunkCoord, Chunk* chunk);
 		Chunk *getChunk(BlockPos chunkCoord);
 		std::vector<Chunk*> getChunks();
 		bool containsChunk(BlockPos chunkCoord);
+		std::vector<Chunk*> removeChunksOutside(BlockPos center, int horizontalDistance);
 	};
 }

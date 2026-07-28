@@ -1,4 +1,5 @@
 #include "caveGenerator.hpp"
+#include "worldProfiler.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -25,6 +26,7 @@ namespace voxel_game::world
 		constexpr float RAVINE_EDGE_SHARPNESS = 75.0f;
 		constexpr float RAVINE_MAX_DEPTH = 32.0f;
 		constexpr float RAVINE_FLOOR_SHARPNESS = 0.65f;
+		constexpr float MINIMUM_TUNNEL_OR_CHAMBER_DENSITY = -5.88f;
 	}
 
 	CaveGenerator::CaveGenerator(long seed)
@@ -46,6 +48,12 @@ namespace voxel_game::world
 		{
 			boundaryDensity += static_cast<float>(BEDROCK_CAVE_BUFFER - y) * 2.0f;
 		}
+		if (boundaryDensity > -MINIMUM_TUNNEL_OR_CHAMBER_DENSITY)
+		{
+			WorldProfiler::instance().increment(ProfileCounter::TunnelBoundarySkips);
+			return boundaryDensity + MINIMUM_TUNNEL_OR_CHAMBER_DENSITY;
+		}
+		WorldProfiler::instance().increment(ProfileCounter::Cave3dNoiseSamples, 3);
 
 		float tunnelA = m_noiseGenerator.noise3(
 			x + 5107, y - 2903, z + 11027, TUNNEL_SCALE, 2.0f, 0.5f, 2) - 0.5f;
@@ -64,8 +72,10 @@ namespace voxel_game::world
 		return std::min(tunnelDensity, chamberDensity) + boundaryDensity;
 	}
 
-	float CaveGenerator::sampleRavineDensity(int x, int y, int z, float surfaceHeight)
+	CaveColumnSample CaveGenerator::sampleColumn(int x, int z)
 	{
+		WorldProfiler::instance().increment(ProfileCounter::CaveColumnSamples);
+		WorldProfiler::instance().increment(ProfileCounter::Ravine2dNoiseSamples, 2);
 		float regionNoise = m_noiseGenerator.noise2(
 			x - 41009, z + 37003, RAVINE_REGION_SCALE, 2.0f, 0.5f, 2);
 		float regionDensity =
@@ -75,19 +85,28 @@ namespace voxel_game::world
 			x + 19001, z - 29009, RAVINE_PATH_SCALE, 2.0f, 0.5f, 2) * 2.0f - 1.0f;
 		float pathDensity =
 			(std::abs(pathNoise) - RAVINE_HALF_WIDTH) * RAVINE_EDGE_SHARPNESS;
+		return {std::max(regionDensity, pathDensity)};
+	}
 
+	float CaveGenerator::sampleRavineDensity(const CaveColumnSample& column, int y, float surfaceHeight)
+	{
 		float depth = surfaceHeight - static_cast<float>(y);
 		float floorDensity = (depth - RAVINE_MAX_DEPTH) * RAVINE_FLOOR_SHARPNESS;
 
 		// max() intersects the regional, path, and depth constraints. A ravine
 		// exists only where all three signed fields are negative.
-		return std::max({regionDensity, pathDensity, floorDensity});
+		return std::max(column.ravineHorizontalDensity, floorDensity);
 	}
 
 	float CaveGenerator::sampleDensity(int x, int y, int z, float surfaceHeight)
 	{
+		return sampleDensity(sampleColumn(x, z), x, y, z, surfaceHeight);
+	}
+
+	float CaveGenerator::sampleDensity(const CaveColumnSample& column, int x, int y, int z, float surfaceHeight)
+	{
 		return std::min(
 			sampleTunnelDensity(x, y, z, surfaceHeight),
-			sampleRavineDensity(x, y, z, surfaceHeight));
+			sampleRavineDensity(column, y, surfaceHeight));
 	}
 }

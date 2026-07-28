@@ -89,6 +89,68 @@ namespace voxel_game::world
 		return BlockTypeId::STONE;
 	}
 
+	static BlockTypeId snowyTundraBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::SNOW;
+		if (y > height - SOIL_DEPTH) return BlockTypeId::DIRT;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId taigaBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::PODZOL;
+		if (y > height - SOIL_DEPTH) return BlockTypeId::DIRT;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId savannaBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::DRY_GRASS;
+		if (y > height - SOIL_DEPTH) return BlockTypeId::DIRT;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId rockyHighlandsBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::GRAVEL;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId rainforestBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::RAINFOREST_GRASS;
+		if (y > height - SOIL_DEPTH) return BlockTypeId::MUD;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId volcanicBlock(int x, int y, int z, int height) {
+		// Sparse deterministic lava vents make this biome recognizable before
+		// feature generation adds proper flows and calderas.
+		const unsigned hash = static_cast<unsigned>(x * 73428767u)
+			^ static_cast<unsigned>(z * 912931u);
+		if (y == height && hash % 97u == 0u) return BlockTypeId::LAVA;
+		return BlockTypeId::BASALT;
+	}
+
+	static BlockTypeId saltFlatsBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::SALT;
+		if (y > height - SOIL_DEPTH) return BlockTypeId::SANDSTONE;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId mesaBlock(int x, int y, int z, int height) {
+		if (y >= height - 1) return BlockTypeId::TERRACOTTA;
+		if ((y / 4) % 3 == 0) return BlockTypeId::RED_SANDSTONE;
+		if (y > height - 18) return BlockTypeId::TERRACOTTA;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId glacierBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::SNOW;
+		if (y > height - 10) return BlockTypeId::ICE;
+		return BlockTypeId::STONE;
+	}
+
+	static BlockTypeId stonyCoastBlock(int x, int y, int z, int height) {
+		if (y == height) return BlockTypeId::GRAVEL;
+		return BlockTypeId::STONE;
+	}
+
     static const Biome PLAINS = {
         BiomeType::Plains,
         plainsHeight,
@@ -125,6 +187,17 @@ namespace voxel_game::world
 		badlandsBlock
 	};
 
+	static const Biome SNOWY_TUNDRA = {BiomeType::SnowyTundra, plainsHeight, snowyTundraBlock};
+	static const Biome TAIGA = {BiomeType::Taiga, plainsHeight, taigaBlock};
+	static const Biome SAVANNA = {BiomeType::Savanna, plainsHeight, savannaBlock};
+	static const Biome ROCKY_HIGHLANDS = {BiomeType::RockyHighlands, mountainHeight, rockyHighlandsBlock};
+	static const Biome RAINFOREST = {BiomeType::Rainforest, plainsHeight, rainforestBlock};
+	static const Biome VOLCANIC = {BiomeType::Volcanic, mountainHeight, volcanicBlock};
+	static const Biome SALT_FLATS = {BiomeType::SaltFlats, desertHeight, saltFlatsBlock};
+	static const Biome MESA = {BiomeType::Mesa, badlandsHeight, mesaBlock};
+	static const Biome GLACIER = {BiomeType::Glacier, mountainHeight, glacierBlock};
+	static const Biome STONY_COAST = {BiomeType::StonyCoast, oceanHeight, stonyCoastBlock};
+
     const std::unordered_map<BiomeType, const Biome*> BIOMES = {
         { BiomeType::Plains,    &PLAINS },
         { BiomeType::Mountains, &MOUNTAINS },
@@ -132,5 +205,15 @@ namespace voxel_game::world
         { BiomeType::Ocean,    &OCEAN },
 		{ BiomeType::Marsh,     &MARSH },
 		{ BiomeType::Badlands,  &BADLANDS },
+		{ BiomeType::SnowyTundra, &SNOWY_TUNDRA },
+		{ BiomeType::Taiga, &TAIGA },
+		{ BiomeType::Savanna, &SAVANNA },
+		{ BiomeType::RockyHighlands, &ROCKY_HIGHLANDS },
+		{ BiomeType::Rainforest, &RAINFOREST },
+		{ BiomeType::Volcanic, &VOLCANIC },
+		{ BiomeType::SaltFlats, &SALT_FLATS },
+		{ BiomeType::Mesa, &MESA },
+		{ BiomeType::Glacier, &GLACIER },
+		{ BiomeType::StonyCoast, &STONY_COAST },
     };
 };

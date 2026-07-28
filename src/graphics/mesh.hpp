@@ -60,6 +60,8 @@ namespace voxel_game::graphics
 	private:
 		std::vector<Vertex> m_vertices;
 		std::vector<GLuint> m_indices;
+		size_t m_vertexCount;
+		size_t m_indexCount;
 
 		Texture *m_texture;
 		physics::Transform *m_transform;
@@ -85,6 +87,9 @@ namespace voxel_game::graphics
 		physics::Transform* getTransform();
 		std::vector<Vertex> getVertices();
 		std::vector<GLuint> getIndices();
-		int getVertexCount();
+		size_t getVertexCount() const;
+		size_t getIndexCount() const;
+		size_t getCpuStorageBytes() const;
+		size_t getEstimatedGpuBytes() const;
 	};
 }

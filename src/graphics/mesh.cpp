@@ -3,10 +3,12 @@
 namespace voxel_game::graphics
 {
 	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, physics::Transform* transform, Texture* texture)
-		: m_vertices(vertices),
-		m_indices(indices),
-		m_transform(transform),
+		: m_vertices(std::move(vertices)),
+		m_indices(std::move(indices)),
+		m_vertexCount(m_vertices.size()),
+		m_indexCount(m_indices.size()),
 		m_texture(texture),
+		m_transform(transform),
 		m_isInit(false) {}
 
 	Mesh::~Mesh()
@@ -29,7 +31,7 @@ namespace voxel_game::graphics
 		glBindVertexArray(m_vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
 
-		glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indexCount), GL_UNSIGNED_INT, 0);
 
 		m_texture->unbind();
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -105,6 +107,13 @@ namespace voxel_game::graphics
 		glVertexAttribIPointer(6, 1, GL_INT, intBufferStride, (void*)(3 * sizeof(int)));
 		glVertexAttribIPointer(7, 1, GL_INT, intBufferStride, (void*)(4 * sizeof(int)));
 
+		// The GPU buffers are now authoritative. Keeping the construction data
+		// for every chunk and every LOD duplicates the largest mesh allocation.
+		m_vertices.clear();
+		m_vertices.shrink_to_fit();
+		m_indices.clear();
+		m_indices.shrink_to_fit();
+
 		m_isInit = true;
 	}
 
@@ -160,8 +169,25 @@ namespace voxel_game::graphics
 		return m_indices;
 	}
 
-	int Mesh::getVertexCount()
+	size_t Mesh::getVertexCount() const
 	{
-		return m_vertices.size();
+		return m_vertexCount;
+	}
+
+	size_t Mesh::getIndexCount() const
+	{
+		return m_indexCount;
+	}
+
+	size_t Mesh::getCpuStorageBytes() const
+	{
+		return m_vertices.capacity() * sizeof(Vertex) + m_indices.capacity() * sizeof(GLuint);
+	}
+
+	size_t Mesh::getEstimatedGpuBytes() const
+	{
+		const size_t vertexBytes = m_vertexCount
+			* (VERTEX_FLOAT_SIZE * sizeof(float) + VERTEX_INT_SIZE * sizeof(int));
+		return vertexBytes + m_indexCount * sizeof(GLuint);
 	}
 }

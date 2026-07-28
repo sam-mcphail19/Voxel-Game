@@ -26,7 +26,7 @@ namespace voxel_game
 		world::DebugInfo m_debugInfo = {};
 		bool m_isDebugEnabled = true;
 
-		graphics::Window m_window = graphics::Window(m_title, 1280, 720);
+		graphics::Window m_window = graphics::Window(m_title, 1920, 1080);
 		graphics::Renderer m_renderer = graphics::Renderer(m_window);
 		graphics::Shader m_chunkShader = graphics::Shader("chunk.vs", "chunk.fs");
 		graphics::Shader m_uiShader = graphics::Shader("ui.vs", "ui.fs");

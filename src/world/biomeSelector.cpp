@@ -52,6 +52,29 @@ namespace voxel_game::world
 		constexpr float BADLANDS_RUGGED_START = 0.42f;
 		constexpr float BADLANDS_RUGGED_END = 0.72f;
 
+		constexpr float LAND_START = 0.46f;
+		constexpr float LAND_END = 0.60f;
+		constexpr float COLD_START = 0.28f;
+		constexpr float COLD_END = 0.50f;
+		constexpr float VERY_COLD_START = 0.16f;
+		constexpr float VERY_COLD_END = 0.34f;
+		constexpr float WARM_START = 0.52f;
+		constexpr float WARM_END = 0.72f;
+		constexpr float HUMID_START = 0.48f;
+		constexpr float HUMID_END = 0.72f;
+		constexpr float VERY_HUMID_START = 0.62f;
+		constexpr float VERY_HUMID_END = 0.82f;
+		constexpr float SAVANNA_DRY_START = 0.22f;
+		constexpr float SAVANNA_DRY_END = 0.42f;
+		constexpr float SAVANNA_WET_START = 0.52f;
+		constexpr float SAVANNA_WET_END = 0.70f;
+		constexpr float EXTREME_RUGGED_START = 0.20f;
+		constexpr float EXTREME_RUGGED_END = 0.50f;
+		constexpr float COAST_LAND_START = 0.38f;
+		constexpr float COAST_LAND_END = 0.52f;
+		constexpr float COAST_INLAND_START = 0.58f;
+		constexpr float COAST_INLAND_END = 0.70f;
+
 		constexpr float CLEAR_BIOME_LEAD = 0.035f;
 		constexpr float TRANSITION_NOISE_SCALE = 0.025f;
 		constexpr int TRANSITION_NOISE_X_OFFSET = 34001;
@@ -112,13 +135,60 @@ namespace voxel_game::world
 				+ badlandsDry * BADLANDS_DRY_IMPORTANCE
 				+ badlandsRugged * BADLANDS_RUGGED_IMPORTANCE);
 
+		const float land = glm::smoothstep(LAND_START, LAND_END, terrain.continentalness);
+		const float cold = 1.0f - glm::smoothstep(COLD_START, COLD_END, terrain.temperature);
+		const float veryCold =
+			1.0f - glm::smoothstep(VERY_COLD_START, VERY_COLD_END, terrain.temperature);
+		const float warm = glm::smoothstep(WARM_START, WARM_END, terrain.temperature);
+		const float humid = glm::smoothstep(HUMID_START, HUMID_END, terrain.humidity);
+		const float veryHumid =
+			glm::smoothstep(VERY_HUMID_START, VERY_HUMID_END, terrain.humidity);
+		const float extremeRugged =
+			1.0f - glm::smoothstep(EXTREME_RUGGED_START, EXTREME_RUGGED_END, terrain.erosion);
+		const float savannaMoisture =
+			glm::smoothstep(SAVANNA_DRY_START, SAVANNA_DRY_END, terrain.humidity)
+			* (1.0f - glm::smoothstep(
+				SAVANNA_WET_START, SAVANNA_WET_END, terrain.humidity));
+		const float coastBand =
+			glm::smoothstep(COAST_LAND_START, COAST_LAND_END, terrain.continentalness)
+			* (1.0f - glm::smoothstep(
+				COAST_INLAND_START, COAST_INLAND_END, terrain.continentalness));
+
+		const float snowyTundra =
+			land * cold * gentle * (1.0f - humid * 0.65f) * 1.25f;
+		const float taiga = land * cold * humid * 1.15f;
+		const float savanna = land * warm * savannaMoisture * gentle * 1.25f;
+		const float rockyHighlands =
+			mountainInland * rugged * (0.55f + 0.45f * extremeRugged);
+		const float rainforest = land * warm * veryHumid * 1.35f;
+		const float volcanic = land * extremeRugged
+			* glm::smoothstep(0.42f, 0.78f, terrain.formationMask) * 1.15f;
+		const float saltFlats = land * hot * dry * gentle * 1.05f;
+		const float mesa = land * warm * dry
+			* glm::smoothstep(0.30f, 0.72f,
+				terrain.plateauCliffMask * 0.65f + badlandsRugged * 0.35f) * 1.15f;
+		const float glacier = mountainInland * veryCold * rugged * 1.40f;
+		const float stonyCoast = coastBand
+			* glm::smoothstep(0.25f, 0.70f,
+				terrain.coastMask * 0.65f + rugged * 0.35f) * 1.20f;
+
 		return {
 			{BIOMES.at(BiomeType::Ocean), ocean},
 			{BIOMES.at(BiomeType::Desert), desertInland * desertClimate},
 			{BIOMES.at(BiomeType::Mountains), mountainInland * rugged},
 			{BIOMES.at(BiomeType::Plains), plains},
 			{BIOMES.at(BiomeType::Marsh), marshCoast * marshClimate * MARSH_STRENGTH},
-			{BIOMES.at(BiomeType::Badlands), badlandsInland * badlandsClimate}
+			{BIOMES.at(BiomeType::Badlands), badlandsInland * badlandsClimate},
+			{BIOMES.at(BiomeType::SnowyTundra), snowyTundra},
+			{BIOMES.at(BiomeType::Taiga), taiga},
+			{BIOMES.at(BiomeType::Savanna), savanna},
+			{BIOMES.at(BiomeType::RockyHighlands), rockyHighlands},
+			{BIOMES.at(BiomeType::Rainforest), rainforest},
+			{BIOMES.at(BiomeType::Volcanic), volcanic},
+			{BIOMES.at(BiomeType::SaltFlats), saltFlats},
+			{BIOMES.at(BiomeType::Mesa), mesa},
+			{BIOMES.at(BiomeType::Glacier), glacier},
+			{BIOMES.at(BiomeType::StonyCoast), stonyCoast}
 		};
 	}
 

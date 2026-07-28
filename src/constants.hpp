@@ -21,6 +21,7 @@ inline constexpr int WATER_HEIGHT = 72;
 inline constexpr int MIN_WORLD_GEN_HEIGHT = 40;
 inline constexpr int MAX_WORLD_GEN_HEIGHT = 300;
 inline constexpr int CHUNK_RENDER_DISTANCE = 32;
+inline constexpr int CHUNK_UNLOAD_DISTANCE = CHUNK_RENDER_DISTANCE + 4;
 inline constexpr int CHUNK_RENDER_DISTANCE_IN_BLOCKS = CHUNK_RENDER_DISTANCE * CHUNK_SIZE;
 inline constexpr int CHUNK_LOD_LEVEL_COUNT = 3;
 inline constexpr int CHUNK_LOD_1_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 16;

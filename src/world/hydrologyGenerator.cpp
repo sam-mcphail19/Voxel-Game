@@ -11,6 +11,7 @@
 #include <glm/common.hpp>
 #include "../constants.hpp"
 #include "../util/mathUtils.hpp"
+#include "worldProfiler.hpp"
 
 namespace voxel_game::world
 {
@@ -82,18 +83,70 @@ namespace voxel_game::world
 
 	std::shared_ptr<HydrologyGenerator::Region> HydrologyGenerator::getRegion(int regionX, int regionZ)
 	{
-		long long key = regionKey(regionX, regionZ);
-		std::lock_guard<std::mutex> lock(m_regionMutex);
-		auto found = m_regions.find(key);
-		if (found != m_regions.end()) return found->second;
+		const long long key = regionKey(regionX, regionZ);
+		using LocalRegionCache = std::unordered_map<long long, std::weak_ptr<Region>>;
+		static thread_local std::unordered_map<const HydrologyGenerator*, LocalRegionCache>
+			threadRegionCaches;
+		LocalRegionCache& threadCache = threadRegionCaches[this];
+		if (auto local = threadCache[key].lock())
+		{
+			WorldProfiler::instance().increment(ProfileCounter::HydrologyThreadLocalHits);
+			return local;
+		}
 
-		auto region = buildRegion(regionX, regionZ);
-		m_regions.emplace(key, region);
-		return region;
+		std::shared_ptr<std::promise<std::shared_ptr<Region>>> promise;
+		RegionFuture future;
+
+		{
+			std::lock_guard<std::mutex> lock(m_regionMutex);
+			auto found = m_regions.find(key);
+			if (found != m_regions.end())
+			{
+				future = found->second;
+				WorldProfiler::instance().increment(ProfileCounter::HydrologyCacheHits);
+			}
+			else
+			{
+				promise = std::make_shared<std::promise<std::shared_ptr<Region>>>();
+				future = promise->get_future().share();
+				m_regions.emplace(key, future);
+			}
+		}
+
+		// Only the thread that inserted the promise builds this region. Other
+		// callers wait without holding the cache mutex, while unrelated regions
+		// can be constructed concurrently.
+		if (!promise)
+		{
+			if (future.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+			{
+				WorldProfiler::instance().increment(ProfileCounter::HydrologyCacheWaits);
+			}
+			std::shared_ptr<Region> region = future.get();
+			threadCache[key] = region;
+			return region;
+		}
+
+		try
+		{
+			WorldProfiler::instance().increment(ProfileCounter::HydrologyRegionsBuilt);
+			std::shared_ptr<Region> region = buildRegion(regionX, regionZ);
+			promise->set_value(region);
+			threadCache[key] = region;
+			return region;
+		}
+		catch (...)
+		{
+			promise->set_exception(std::current_exception());
+			std::lock_guard<std::mutex> lock(m_regionMutex);
+			m_regions.erase(key);
+			throw;
+		}
 	}
 
 	std::shared_ptr<HydrologyGenerator::Region> HydrologyGenerator::buildRegion(int regionX, int regionZ)
 	{
+		ScopedProfileStage timer(ProfileStage::HydrologyRegion);
 		auto region = std::make_shared<Region>();
 		region->originX = regionX * REGION_SIZE;
 		region->originZ = regionZ * REGION_SIZE;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -25,7 +26,8 @@ namespace voxel_game::world
 		NoiseGenerator m_noiseGenerator;
 		HeightSampler m_heightSampler;
 		std::mutex m_regionMutex;
-		std::unordered_map<long long, std::shared_ptr<Region>> m_regions;
+		using RegionFuture = std::shared_future<std::shared_ptr<Region>>;
+		std::unordered_map<long long, RegionFuture> m_regions;
 
 		std::shared_ptr<Region> getRegion(int regionX, int regionZ);
 		std::shared_ptr<Region> buildRegion(int regionX, int regionZ);

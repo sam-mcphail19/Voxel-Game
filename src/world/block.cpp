@@ -18,6 +18,15 @@ namespace voxel_game::world
 			{BlockTypeId::MARSH_GRASS, "Marsh Grass"},
 			{BlockTypeId::MUD, "Mud"},
 			{BlockTypeId::RED_SANDSTONE, "Red Sandstone"},
+			{BlockTypeId::SNOW, "Snow"},
+			{BlockTypeId::ICE, "Ice"},
+			{BlockTypeId::PODZOL, "Podzol"},
+			{BlockTypeId::DRY_GRASS, "Dry Grass"},
+			{BlockTypeId::RAINFOREST_GRASS, "Rainforest Grass"},
+			{BlockTypeId::BASALT, "Basalt"},
+			{BlockTypeId::LAVA, "Lava"},
+			{BlockTypeId::SALT, "Salt"},
+			{BlockTypeId::TERRACOTTA, "Terracotta"},
 		};
 
 		auto it = blockTypeStrings.find(id);

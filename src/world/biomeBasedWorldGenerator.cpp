@@ -1,4 +1,5 @@
 #include "biomeBasedWorldGenerator.hpp"
+#include "worldProfiler.hpp"
 
 namespace voxel_game::world
 {
@@ -20,6 +21,22 @@ namespace voxel_game::world
 		constexpr float CENTRAL_DIFFERENCE_SCALE = 0.5f;
 		constexpr int BEDROCK_THICKNESS = 4;
 		constexpr int COLUMN_SAMPLE_BORDER = 1;
+
+		bool isFrozenBiome(BiomeType biome)
+		{
+			return biome == BiomeType::SnowyTundra || biome == BiomeType::Glacier;
+		}
+
+		BlockTypeId getWaterBlockType(
+			const Biome* biome, const TerrainSample& terrain, int y)
+		{
+			const int surfaceY = terrain.riverMask > RIVER_WATER_MASK_THRESHOLD
+				? static_cast<int>(std::floor(terrain.riverSurfaceHeight))
+				: WATER_HEIGHT;
+			return isFrozenBiome(biome->type) && y == surfaceY
+				? BlockTypeId::ICE
+				: BlockTypeId::WATER;
+		}
 
 		float calculateSlopeFromHeights(int west, int east, int north, int south)
 		{
@@ -81,11 +98,17 @@ namespace voxel_game::world
 
 	int BiomeBasedWorldGenerator::calculateSurfaceHeight(const TerrainSample& terrain, int x, int z)
 	{
+		return calculateSurfaceHeight(terrain, m_caveGenerator.sampleColumn(x, z), x, z);
+	}
+
+	int BiomeBasedWorldGenerator::calculateSurfaceHeight(const TerrainSample& terrain, const CaveColumnSample& caveColumn, int x, int z)
+	{
+		ScopedProfileStage timer(ProfileStage::SurfaceHeightSearch);
 		float maximumDisplacement = terrain.densityStrength + terrain.formationStrength;
 		int searchTop = std::min(WORLD_HEIGHT - 1, static_cast<int>(std::ceil(terrain.height + maximumDisplacement)));
 		for (int y = searchTop; y >= 0; --y)
 		{
-			if (calculateDensity(terrain, x, y, z) > 0.0f)
+			if (calculateDensity(terrain, caveColumn, x, y, z) > 0.0f)
 			{
 				return y;
 			}
@@ -138,6 +161,20 @@ namespace voxel_game::world
 	BlockTypeId BiomeBasedWorldGenerator::selectSurfaceBlock(BlockTypeId biomeSurfaceBlock, float coastMask, float slope, int surfaceHeight)
 	{
 		if (surfaceHeight < WATER_HEIGHT) return biomeSurfaceBlock;
+		switch (biomeSurfaceBlock)
+		{
+		case BlockTypeId::SNOW:
+		case BlockTypeId::PODZOL:
+		case BlockTypeId::DRY_GRASS:
+		case BlockTypeId::RAINFOREST_GRASS:
+		case BlockTypeId::BASALT:
+		case BlockTypeId::LAVA:
+		case BlockTypeId::SALT:
+		case BlockTypeId::TERRACOTTA:
+			return biomeSurfaceBlock;
+		default:
+			break;
+		}
 		if (coastMask > COAST_MASK_THRESHOLD
 			&& surfaceHeight <= WATER_HEIGHT + BEACH_MAX_HEIGHT_ABOVE_WATER)
 		{
@@ -156,8 +193,20 @@ namespace voxel_game::world
 
 	float BiomeBasedWorldGenerator::calculateDensity(const TerrainSample& terrain, int x, int y, int z)
 	{
+		return calculateDensity(terrain, m_caveGenerator.sampleColumn(x, z), x, y, z);
+	}
+
+	float BiomeBasedWorldGenerator::calculateDensity(const TerrainSample& terrain, const CaveColumnSample& caveColumn, int x, int y, int z)
+	{
+		WorldProfiler::instance().increment(ProfileCounter::TerrainDensityEvaluations);
 		float terrainDensity = m_terrainGenerator.sampleDensity(terrain, x, y, z);
-		float caveDensity = m_caveGenerator.sampleDensity(x, y, z, terrain.height);
+		if (terrainDensity <= 0.0f)
+		{
+			WorldProfiler::instance().increment(ProfileCounter::TerrainAirCaveSkips);
+			return terrainDensity;
+		}
+		WorldProfiler::instance().increment(ProfileCounter::CaveEvaluations);
+		float caveDensity = m_caveGenerator.sampleDensity(caveColumn, x, y, z, terrain.height);
 		return std::min(terrainDensity, caveDensity);
 	}
 
@@ -226,14 +275,15 @@ namespace voxel_game::world
 
 		auto terrain = sampleTerrain(x, z);
 		int surfaceHeight = getHeight(x, z);
+		auto weights = buildWeights(terrain);
+		const Biome* dominantBiome = selectBiome(weights, x, z);
 
 		if (calculateDensity(terrain, x, y, z) <= 0.0f)
 		{
-			return isWater(terrain, y) ? BlockTypeId::WATER : BlockTypeId::AIR;
+			return isWater(terrain, y)
+				? getWaterBlockType(dominantBiome, terrain, y)
+				: BlockTypeId::AIR;
 		}
-
-		auto weights = buildWeights(terrain);
-		const Biome* dominantBiome = selectBiome(weights, x, z);
 
 		if (y == surfaceHeight)
 		{
@@ -244,11 +294,13 @@ namespace voxel_game::world
 
 	void BiomeBasedWorldGenerator::generateChunkData(Chunk &chunk)
 	{
+		ScopedProfileCounterBatch counterBatch;
 		auto origin = chunk.getOrigin();
 		constexpr int PADDED_SIZE = CHUNK_SIZE + COLUMN_SAMPLE_BORDER * 2;
 		struct ColumnData
 		{
 			TerrainSample terrain;
+			CaveColumnSample cave;
 			int surfaceHeight;
 		};
 		std::array<ColumnData, PADDED_SIZE * PADDED_SIZE> columns;
@@ -259,60 +311,71 @@ namespace voxel_game::world
 			return columns[paddedX + paddedZ * PADDED_SIZE];
 		};
 
-		for (int paddedX = 0; paddedX < PADDED_SIZE; ++paddedX)
 		{
-			for (int paddedZ = 0; paddedZ < PADDED_SIZE; ++paddedZ)
+			ScopedProfileStage timer(ProfileStage::ColumnSampling);
+			for (int paddedX = 0; paddedX < PADDED_SIZE; ++paddedX)
 			{
-				int worldX = origin.x + paddedX - COLUMN_SAMPLE_BORDER;
-				int worldZ = origin.z + paddedZ - COLUMN_SAMPLE_BORDER;
-				auto terrain = sampleTerrain(worldX, worldZ);
-				columns[paddedX + paddedZ * PADDED_SIZE] = {
-					terrain,
-					calculateSurfaceHeight(terrain, worldX, worldZ)
-				};
+				for (int paddedZ = 0; paddedZ < PADDED_SIZE; ++paddedZ)
+				{
+					int worldX = origin.x + paddedX - COLUMN_SAMPLE_BORDER;
+					int worldZ = origin.z + paddedZ - COLUMN_SAMPLE_BORDER;
+					auto terrain = sampleTerrain(worldX, worldZ);
+					CaveColumnSample cave = m_caveGenerator.sampleColumn(worldX, worldZ);
+					columns[paddedX + paddedZ * PADDED_SIZE] = {
+						terrain,
+						cave,
+						calculateSurfaceHeight(terrain, cave, worldX, worldZ)
+					};
+				}
 			}
 		}
 
-		for (int x = 0; x < CHUNK_SIZE; x++)
 		{
-			for (int z = 0; z < CHUNK_SIZE; z++)
+			ScopedProfileStage timer(ProfileStage::VoxelGeneration);
+			for (int x = 0; x < CHUNK_SIZE; x++)
 			{
-				int worldX = origin.x + x;
-				int worldZ = origin.z + z;
-				const auto& column = columnAt(x, z);
-				const auto& terrain = column.terrain;
-				auto weights = buildWeights(terrain);
-				const Biome* dominantBiome = selectBiome(weights, worldX, worldZ);
-				int surfaceHeight = column.surfaceHeight;
-				int west = columnAt(x - 1, z).surfaceHeight;
-				int east = columnAt(x + 1, z).surfaceHeight;
-				int north = columnAt(x, z - 1).surfaceHeight;
-				int south = columnAt(x, z + 1).surfaceHeight;
-				float slope = calculateSlopeFromHeights(west, east, north, south);
-				BlockTypeId surfaceBlockType = getSurfaceBlockType(dominantBiome, terrain, slope, worldX, worldZ, surfaceHeight);
-
-				for (int y = 0; y < CHUNK_HEIGHT; y++)
+				for (int z = 0; z < CHUNK_SIZE; z++)
 				{
-					int worldY = origin.y + y;
-					BlockTypeId blockTypeId;
-					if (worldY < BEDROCK_THICKNESS)
-					{
-						blockTypeId = BlockTypeId::BEDROCK;
-					}
-					else if (calculateDensity(terrain, worldX, worldY, worldZ) <= 0.0f)
-					{
-						blockTypeId = isWater(terrain, worldY) ? BlockTypeId::WATER : BlockTypeId::AIR;
-					}
-					else
-					{
-						blockTypeId = worldY == surfaceHeight
-							? surfaceBlockType
-							: dominantBiome->blockFunc(worldX, worldY, worldZ, surfaceHeight);
-					}
+					int worldX = origin.x + x;
+					int worldZ = origin.z + z;
+					const auto& column = columnAt(x, z);
+					const auto& terrain = column.terrain;
+					auto weights = buildWeights(terrain);
+					const Biome* dominantBiome = selectBiome(weights, worldX, worldZ);
+					int surfaceHeight = column.surfaceHeight;
+					int west = columnAt(x - 1, z).surfaceHeight;
+					int east = columnAt(x + 1, z).surfaceHeight;
+					int north = columnAt(x, z - 1).surfaceHeight;
+					int south = columnAt(x, z + 1).surfaceHeight;
+					float slope = calculateSlopeFromHeights(west, east, north, south);
+					BlockTypeId surfaceBlockType = getSurfaceBlockType(dominantBiome, terrain, slope, worldX, worldZ, surfaceHeight);
 
-					chunk.putBlock(Block{ BlockPos{ x, y, z }, blockTypeId });
+					for (int y = 0; y < CHUNK_HEIGHT; y++)
+					{
+						int worldY = origin.y + y;
+						BlockTypeId blockTypeId;
+						if (worldY < BEDROCK_THICKNESS)
+						{
+							blockTypeId = BlockTypeId::BEDROCK;
+						}
+						else if (calculateDensity(terrain, column.cave, worldX, worldY, worldZ) <= 0.0f)
+						{
+							blockTypeId = isWater(terrain, worldY)
+								? getWaterBlockType(dominantBiome, terrain, worldY)
+								: BlockTypeId::AIR;
+						}
+						else
+						{
+							blockTypeId = worldY == surfaceHeight
+								? surfaceBlockType
+								: dominantBiome->blockFunc(worldX, worldY, worldZ, surfaceHeight);
+						}
+
+						chunk.putBlock(Block{ BlockPos{ x, y, z }, blockTypeId });
+					}
 				}
 			}
+			WorldProfiler::instance().increment(ProfileCounter::BlockAssignments, CHUNK_BLOCK_COUNT);
 		}
 	}
 
