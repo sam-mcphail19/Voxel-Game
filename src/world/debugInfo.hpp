@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <array>
 #include <cstdint>
+#include <string>
 
 namespace voxel_game::world
 {
@@ -79,11 +80,33 @@ namespace voxel_game::world
 		size_t queuedJobCount = 0;
 	};
 
+	struct WorldGenDiagnostics
+	{
+		std::string biome = "Unknown";
+		std::string terrain = "Unknown";
+		int surfaceHeight = 0;
+		float continentalness = 0.0f;
+		float erosion = 0.0f;
+		float temperature = 0.0f;
+		float humidity = 0.0f;
+		float mountainRange = 0.0f;
+		float mountainCore = 0.0f;
+		float mountainPeak = 0.0f;
+		float mountainPass = 0.0f;
+		float valley = 0.0f;
+		float canyon = 0.0f;
+		float erosionGully = 0.0f;
+		float talus = 0.0f;
+		float deposition = 0.0f;
+		float river = 0.0f;
+		float riverFlow = 0.0f;
+	};
+
 	struct DebugInfo
 	{
 		int x = 0, y = 0, z = 0;
-		float m_c = 0.f, m_e = 0.f, m_pv = 0.f, m_s = 0.f;
 		MemoryDiagnostics memory;
 		GenerationDiagnostics generation;
+		WorldGenDiagnostics worldGen;
 	};
 }

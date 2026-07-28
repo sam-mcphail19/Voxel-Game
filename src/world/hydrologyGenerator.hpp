@@ -16,15 +16,22 @@ namespace voxel_game::world
 		float flow;
 	};
 
+	struct HydrologyTerrainSample
+	{
+		float height;
+		float valleyMask;
+		float canyonMask;
+	};
+
 	class HydrologyGenerator
 	{
 	private:
 		struct Region;
 
-		using HeightSampler = std::function<float(int, int)>;
+		using TerrainSampler = std::function<HydrologyTerrainSample(int, int)>;
 
 		NoiseGenerator m_noiseGenerator;
-		HeightSampler m_heightSampler;
+		TerrainSampler m_terrainSampler;
 		std::mutex m_regionMutex;
 		using RegionFuture = std::shared_future<std::shared_ptr<Region>>;
 		std::unordered_map<long long, RegionFuture> m_regions;
@@ -34,7 +41,7 @@ namespace voxel_game::world
 		HydrologySample sampleRegion(const Region& region, int x, int z) const;
 
 	public:
-		HydrologyGenerator(long seed, HeightSampler heightSampler);
+		HydrologyGenerator(long seed, TerrainSampler terrainSampler);
 
 		HydrologySample sample(int x, int z);
 	};

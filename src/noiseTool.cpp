@@ -49,6 +49,16 @@ namespace voxel_game
 			"Temperature",
 			"Humidity",
 			"Ridges",
+			"Mountain ranges",
+			"Mountain foothills",
+			"Mountain cores",
+			"Mountain peaks",
+			"Mountain passes",
+			"Valleys",
+			"Canyons",
+			"Erosion gullies",
+			"Talus",
+			"Deposition",
 			"Coasts",
 			"Slope",
 			"Plateau cliffs",
@@ -182,6 +192,16 @@ namespace voxel_game
 						case NoiseView::Temperature: value = sample.temperature; break;
 						case NoiseView::Humidity: value = sample.humidity; break;
 						case NoiseView::Ridges: value = sample.ridge; break;
+						case NoiseView::MountainRanges: value = sample.mountainRanges; break;
+						case NoiseView::MountainFoothills: value = sample.mountainFoothills; break;
+						case NoiseView::MountainCores: value = sample.mountainCores; break;
+						case NoiseView::MountainPeaks: value = sample.mountainPeaks; break;
+						case NoiseView::MountainPasses: value = sample.mountainPasses; break;
+						case NoiseView::Valleys: value = sample.valleys; break;
+						case NoiseView::Canyons: value = sample.canyons; break;
+						case NoiseView::ErosionGullies: value = sample.erosionGullies; break;
+						case NoiseView::Talus: value = sample.talus; break;
+						case NoiseView::Deposition: value = sample.deposition; break;
 						case NoiseView::Coasts: value = sample.coast; break;
 						case NoiseView::Slope: value = sample.slope / 6.0f; break;
 						case NoiseView::PlateauCliffs: value = sample.plateauCliffs; break;

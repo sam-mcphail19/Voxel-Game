@@ -395,7 +395,6 @@ namespace voxel_game::world
 				{
 					BlockPos blockPos = { x, y, z };
 
-					glm::vec3 blockPosVec = toVec3(blockPos);
 					BlockTypeId blockTypeId = representatives[representativeIndex(blockPos, lodScale)];
 
 					if (blockTypeId != BlockTypeId::WATER)
@@ -409,7 +408,6 @@ namespace voxel_game::world
 					{
 						renderBlockPos.y = getHighestWaterY(blockPos, lodScale);
 						meshScale.y = 1.f;
-						blockPosVec = toVec3(renderBlockPos);
 					}
 
 					for (int i = 0; i < 6; i++)
@@ -425,7 +423,7 @@ namespace voxel_game::world
 
 						if (blockTypeId == BlockTypeId::WATER)
 						{
-							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, blockPosVec, transparentVertices, transparentIndices, meshScale, lodScale);
+							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, transparentVertices, transparentIndices, meshScale, lodScale);
 						}
 					}
 				}
@@ -457,10 +455,10 @@ namespace voxel_game::world
 			break;
 		}
 
-		addFaceToMesh(blockTypeId, direction, blockPos + m_origin, toVec3(blockPos), vertices, indices, scale, lodScale);
+		addFaceToMesh(blockTypeId, direction, blockPos + m_origin, vertices, indices, scale, lodScale);
 	}
 
-	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, glm::vec3 blockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale, int lodScale)
+	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale, int lodScale)
 	{
 		for (int j = 0; j < g::Quad::indexCount; j++)
 		{
@@ -502,7 +500,7 @@ namespace voxel_game::world
 			);
 
 			vertices.push_back(g::Vertex(
-				blockPos + vertexPos * scale,
+				toVec3(worldBlockPos) + vertexPos * scale,
 				g::getNormal(direction),
 				uv,
 				blockTypeId,
@@ -762,6 +760,7 @@ namespace voxel_game::world
 
 	bool Chunk::isBlockInBounds(const BlockPos& blockPos) const {
 		return blockPos.x >= 0 && blockPos.x < CHUNK_SIZE &&
+			blockPos.y >= 0 && blockPos.y < CHUNK_HEIGHT &&
 			blockPos.z >= 0 && blockPos.z < CHUNK_SIZE;
 	}
 
@@ -771,10 +770,6 @@ namespace voxel_game::world
 		BlockPos neighbourPos = face.pos + toBlockPos(getNormal(face.dir));
 		BlockTypeId neighbour;
 
-		if (neighbourPos.y < 0 || neighbourPos.y >= CHUNK_HEIGHT)
-		{
-			return true;
-		}
 		if (isBlockInBounds(neighbourPos))
 		{
 			WorldProfiler::instance().increment(ProfileCounter::LocalMeshingBlockReads);
@@ -782,20 +777,24 @@ namespace voxel_game::world
 		}
 		else
 		{
-			Chunk* neighbourChunk = getNeighbourChunk(face.dir, chunkManager);
-
-			if (neighbourChunk == nullptr)
-			{
-				WorldProfiler::instance().increment(ProfileCounter::WorldFallbackReads);
-				neighbour = m_world->getBlock(m_origin + neighbourPos);
-			}
-			else 
+			// Resolve every cross-chunk read from world coordinates. This keeps
+			// vertical and negative-coordinate wrapping in one place and avoids
+			// passing an invalid local position to a neighbouring chunk.
+			const BlockPos worldNeighbourPos = m_origin + neighbourPos;
+			const BlockPos neighbourChunkCoord = {
+				utils::floorDiv(worldNeighbourPos.x, CHUNK_SIZE),
+				utils::floorDiv(worldNeighbourPos.y, CHUNK_HEIGHT),
+				utils::floorDiv(worldNeighbourPos.z, CHUNK_SIZE)
+			};
+			if (chunkManager.containsChunk(neighbourChunkCoord))
 			{
 				WorldProfiler::instance().increment(ProfileCounter::NeighbourChunkReads);
-				// TODO: Should we just call world.getBlock in this case too?
-				BlockPos neighbourLocalPos = worldPosToLocalPos(m_origin + neighbourPos);
-				neighbour = neighbourChunk->getBlock(neighbourLocalPos);
 			}
+			else
+			{
+				WorldProfiler::instance().increment(ProfileCounter::WorldFallbackReads);
+			}
+			neighbour = m_world->getBlock(worldNeighbourPos);
 		}
 
 		if (blockTypeId == BlockTypeId::WATER)
@@ -946,31 +945,26 @@ namespace voxel_game::world
 
 	BlockTypeId Chunk::getBlockForLodOcclusion(BlockPos blockPos, ChunkManager& chunkManager)
 	{
-		if (blockPos.y < 0 || blockPos.y >= CHUNK_HEIGHT)
-		{
-			return BlockTypeId::AIR;
-		}
-
 		if (isBlockInBounds(blockPos))
 		{
 			WorldProfiler::instance().increment(ProfileCounter::LocalMeshingBlockReads);
 			return getBlock(blockPos);
 		}
 
-		BlockPos worldPos = m_origin + blockPos;
-		BlockPos neighbourChunkCoord = {
+		const BlockPos worldPos = m_origin + blockPos;
+		const BlockPos neighbourChunkCoord = {
 			utils::floorDiv(worldPos.x, CHUNK_SIZE),
 			utils::floorDiv(worldPos.y, CHUNK_HEIGHT),
 			utils::floorDiv(worldPos.z, CHUNK_SIZE)
 		};
-		Chunk* neighbourChunk = chunkManager.getChunk(neighbourChunkCoord);
-		if (neighbourChunk != nullptr)
+		if (chunkManager.containsChunk(neighbourChunkCoord))
 		{
 			WorldProfiler::instance().increment(ProfileCounter::NeighbourChunkReads);
-			return neighbourChunk->getBlock(worldPosToLocalPos(worldPos));
 		}
-
-		WorldProfiler::instance().increment(ProfileCounter::WorldFallbackReads);
+		else
+		{
+			WorldProfiler::instance().increment(ProfileCounter::WorldFallbackReads);
+		}
 		return m_world->getBlock(worldPos);
 	}
 }

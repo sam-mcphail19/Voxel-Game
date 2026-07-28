@@ -27,28 +27,6 @@ float lerp(float a, float b, float t) {
     return a + (b - a) * t;
 }
 
-int floorDiv(int a, int b) {
-    int result = a / b;
-	// If a and b have opposite signs and there's a remainder, subtract 1 from the result
-	if ((a % b != 0) && ((a < 0) != (b < 0))) {
-		result--;
-	}
-	return result;
-}
-
-ivec3 getChunkOrigin(ivec3 blockPos) {
-    // TODO: Pass these as uniforms (at start up, not every frame, because they dont change)
-    int x = floorDiv(blockPos.x, 16);
-	int y = floorDiv(blockPos.y, 256);
-	int z = floorDiv(blockPos.z, 16);
-
-	if (y < 0) {
-        y = 0;
-    }
-
-	return ivec3(x * 16, y * 128, z * 16);
-}
-
 void main(void) {
     // water
     if (i_blockType == 2) {
@@ -71,8 +49,7 @@ void main(void) {
 
     ivec3 blockPos = ivec3(i_blockPosX, i_blockPosY, i_blockPosZ);
 
-    // Need to get chunk origin from blockPos and add it to i_position
-    vec3 position = i_position + getChunkOrigin(blockPos);
+    vec3 position = i_position;
     if (i_flags == 1) {
         //position += vec3(sin(u_currTime) - sin(u_currTime/2) + sin(u_currTime/4) - sin(u_currTime/8)) * 0.1;
         if (u_isSelectedBlock == 1 && u_selectedBlock == blockPos) {

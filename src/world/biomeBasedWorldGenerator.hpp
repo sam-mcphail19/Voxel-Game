@@ -24,11 +24,22 @@ namespace voxel_game::world
 		float temperature;
 		float humidity;
 		float ridge;
+		float mountainRanges;
+		float mountainFoothills;
+		float mountainCores;
+		float mountainPeaks;
+		float mountainPasses;
+		float valleys;
+		float canyons;
+		float erosionGullies;
+		float talus;
+		float deposition;
 		float coast;
 		float slope;
 		float plateauCliffs;
 		float formations;
 		float rivers;
+		float riverFlow;
 		float height;
 		float densityStrength;
 		std::array<float, 5> terrainWeights;
@@ -57,7 +68,11 @@ namespace voxel_game::world
 		BlockTypeId getSurfaceBlockType(const Biome* biome, const TerrainSample& terrain, float slope, int x, int z, int surfaceHeight);
 		std::vector<BiomeWeight> buildWeights(const TerrainSample& terrain);
 		int calculateHeight(int x, int z);
-		const Biome* selectBiome(std::vector<BiomeWeight> weights, int x, int z);
+		const Biome* selectBiome(
+			std::vector<BiomeWeight> weights,
+			const TerrainSample& terrain,
+			int x,
+			int z);
 
 	public:
 		BiomeBasedWorldGenerator(long seed);

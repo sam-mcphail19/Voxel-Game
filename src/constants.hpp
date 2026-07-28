@@ -16,10 +16,10 @@ inline constexpr int CHUNK_SIZE_TIMES_HEIGHT = CHUNK_SIZE * CHUNK_HEIGHT;
 inline constexpr int CHUNK_BLOCK_COUNT = CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT;
 inline constexpr int INITIAL_CHUNK_RENDER_DISTANCE = 8;
 inline constexpr int CHUNK_GENERATION_BATCH_SIZE = 16;
-inline constexpr int WORLD_HEIGHT = 512;
+inline constexpr int WORLD_HEIGHT = 768;
 inline constexpr int WATER_HEIGHT = 72;
 inline constexpr int MIN_WORLD_GEN_HEIGHT = 40;
-inline constexpr int MAX_WORLD_GEN_HEIGHT = 300;
+inline constexpr int MAX_WORLD_GEN_HEIGHT = 680;
 inline constexpr int CHUNK_RENDER_DISTANCE = 32;
 inline constexpr int CHUNK_UNLOAD_DISTANCE = CHUNK_RENDER_DISTANCE + 4;
 inline constexpr int CHUNK_RENDER_DISTANCE_IN_BLOCKS = CHUNK_RENDER_DISTANCE * CHUNK_SIZE;
@@ -29,7 +29,7 @@ inline constexpr int CHUNK_LOD_2_DISTANCE_IN_BLOCKS = CHUNK_SIZE * 24;
 
 inline constexpr float GRAVITY = 0.01f;
 inline constexpr float MOUSE_SENS = 0.24f;
-inline constexpr float MOVEMENT_SPEED = 0.25f;
+inline constexpr float MOVEMENT_SPEED = 0.35f;
 inline constexpr float JUMP_SPEED = 0.25f;
 inline constexpr float CREATIVE_MOVEMENT_SPEED = 0.35f;
 

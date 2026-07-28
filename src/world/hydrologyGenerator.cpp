@@ -30,6 +30,8 @@ namespace voxel_game::world
 		constexpr float LAKE_SHORE_DEPTH = 1.5f;
 		constexpr float LAKE_FULL_DEPTH = 4.0f;
 		constexpr float LAKE_SURFACE_CLEARANCE = 0.5f;
+		constexpr float VALLEY_ROUTING_BIAS = 18.0f;
+		constexpr float CANYON_ROUTING_BIAS = 10.0f;
 
 		struct AxisBlend
 		{
@@ -78,8 +80,8 @@ namespace voxel_game::world
 		std::array<float, CELL_COUNT> riverFlow{};
 	};
 
-	HydrologyGenerator::HydrologyGenerator(long seed, HeightSampler heightSampler)
-		: m_noiseGenerator(seed), m_heightSampler(std::move(heightSampler)) {}
+	HydrologyGenerator::HydrologyGenerator(long seed, TerrainSampler terrainSampler)
+		: m_noiseGenerator(seed), m_terrainSampler(std::move(terrainSampler)) {}
 
 	std::shared_ptr<HydrologyGenerator::Region> HydrologyGenerator::getRegion(int regionX, int regionZ)
 	{
@@ -164,8 +166,11 @@ namespace voxel_game::world
 				int index = gx + gz * GRID_SIZE;
 				int worldX = region->originX + (gx - PADDING) * CELL_SIZE;
 				int worldZ = region->originZ + (gz - PADDING) * CELL_SIZE;
-				heights[index] = m_heightSampler(worldX, worldZ);
-				drainageHeights[index] = heights[index];
+				const HydrologyTerrainSample terrain = m_terrainSampler(worldX, worldZ);
+				heights[index] = terrain.height;
+				drainageHeights[index] = terrain.height
+					- terrain.valleyMask * VALLEY_ROUTING_BIAS
+					- terrain.canyonMask * CANYON_ROUTING_BIAS;
 				accumulation[index] = 1.0f;
 				receiver[index] = -1;
 				order[index] = index;

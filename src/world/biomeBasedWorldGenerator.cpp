@@ -51,7 +51,12 @@ namespace voxel_game::world
 			  return m_biomeSelector.getWeight(terrain, BiomeType::Plains);
 		  }),
 		  m_hydrologyGenerator(seed, [this](int x, int z) {
-			  return m_terrainGenerator.sampleBase(x, z).height;
+			  const TerrainSample terrain = m_terrainGenerator.sampleBase(x, z);
+			  return HydrologyTerrainSample{
+				  terrain.height,
+				  terrain.valleyMask,
+				  terrain.canyonMask
+			  };
 		  }),
 		  m_caveGenerator(seed) {}
 
@@ -127,6 +132,12 @@ namespace voxel_game::world
 
 		if (result.riverMask > 0.0f)
 		{
+			constexpr float RIVER_EROSION_OVERLAP_REDUCTION = 0.80f;
+			const float erosionCarving =
+				std::min(0.0f, result.erosionHeightDelta);
+			result.height -= erosionCarving
+				* result.riverMask
+				* RIVER_EROSION_OVERLAP_REDUCTION;
 			float riverBedDepth = utils::lerp(
 				HEADWATER_BED_DEPTH, MAJOR_RIVER_BED_DEPTH, result.riverFlow);
 			float riverBedHeight = result.riverSurfaceHeight - riverBedDepth;
@@ -222,10 +233,33 @@ namespace voxel_game::world
 		auto terrain = sampleTerrain(x, z);
 		auto dominant = std::max_element(terrain.terrainWeights.begin(), terrain.terrainWeights.end());
 		int surfaceHeight = calculateSurfaceHeight(terrain, x, z);
+		TerrainType dominantTerrain =
+			static_cast<TerrainType>(std::distance(terrain.terrainWeights.begin(), dominant));
+		if (terrain.continentalness < 0.48f && surfaceHeight <= WATER_HEIGHT)
+		{
+			dominantTerrain = TerrainType::Ocean;
+		}
+		else if (terrain.canyonMask >= 0.30f)
+		{
+			dominantTerrain = TerrainType::Canyons;
+		}
+		else if (terrain.valleyMask >= 0.30f)
+		{
+			dominantTerrain = TerrainType::Valleys;
+		}
+		else if (terrain.mountainCoreMask >= 0.20f
+			|| terrain.mountainRangeMask >= 0.45f)
+		{
+			dominantTerrain = TerrainType::Mountains;
+		}
+		else if (terrain.mountainFoothillMask >= 0.25f)
+		{
+			dominantTerrain = TerrainType::Highlands;
+		}
 		float slope = 0.0f;
 		BlockTypeId surfaceBlock = BlockTypeId::WATER;
 		auto weights = buildWeights(terrain);
-		const Biome* selectedBiome = selectBiome(weights, x, z);
+		const Biome* selectedBiome = selectBiome(weights, terrain, x, z);
 		if (surfaceHeight > WATER_HEIGHT)
 		{
 			surfaceBlock = selectedBiome->blockFunc(x, surfaceHeight, z, surfaceHeight);
@@ -236,24 +270,39 @@ namespace voxel_game::world
 			terrain.temperature,
 			terrain.humidity,
 			terrain.ridge,
+			terrain.mountainRangeMask,
+			terrain.mountainFoothillMask,
+			terrain.mountainCoreMask,
+			terrain.mountainPeakMask,
+			terrain.mountainPassMask,
+			terrain.valleyMask,
+			terrain.canyonMask,
+			terrain.erosionGullyMask,
+			terrain.talusMask,
+			terrain.depositionMask,
 			terrain.coastMask,
 			slope,
 			terrain.plateauCliffMask,
 			terrain.formationMask,
 			terrain.riverMask,
+			terrain.riverFlow,
 			terrain.height,
 			terrain.densityStrength,
 			terrain.terrainWeights,
-			static_cast<TerrainType>(std::distance(terrain.terrainWeights.begin(), dominant)),
+			dominantTerrain,
 			selectedBiome->type,
 			surfaceHeight,
 			surfaceBlock
 		};
 	}
 
-	const Biome* BiomeBasedWorldGenerator::selectBiome(std::vector<BiomeWeight> weights, int x, int z)
+	const Biome* BiomeBasedWorldGenerator::selectBiome(
+		std::vector<BiomeWeight> weights,
+		const TerrainSample& terrain,
+		int x,
+		int z)
 	{
-		return m_biomeSelector.select(std::move(weights), x, z);
+		return m_biomeSelector.select(std::move(weights), terrain, x, z);
 	}
 
 	int BiomeBasedWorldGenerator::getHeight(int x, int z)
@@ -276,7 +325,7 @@ namespace voxel_game::world
 		auto terrain = sampleTerrain(x, z);
 		int surfaceHeight = getHeight(x, z);
 		auto weights = buildWeights(terrain);
-		const Biome* dominantBiome = selectBiome(weights, x, z);
+		const Biome* dominantBiome = selectBiome(weights, terrain, x, z);
 
 		if (calculateDensity(terrain, x, y, z) <= 0.0f)
 		{
@@ -341,7 +390,8 @@ namespace voxel_game::world
 					const auto& column = columnAt(x, z);
 					const auto& terrain = column.terrain;
 					auto weights = buildWeights(terrain);
-					const Biome* dominantBiome = selectBiome(weights, worldX, worldZ);
+					const Biome* dominantBiome =
+						selectBiome(weights, terrain, worldX, worldZ);
 					int surfaceHeight = column.surfaceHeight;
 					int west = columnAt(x - 1, z).surfaceHeight;
 					int east = columnAt(x + 1, z).surfaceHeight;

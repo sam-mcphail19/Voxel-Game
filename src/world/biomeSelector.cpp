@@ -25,6 +25,9 @@ namespace voxel_game::world
 		constexpr float MOUNTAIN_INLAND_END = 0.80f;
 		constexpr float MOUNTAIN_RUGGED_START = 0.35f;
 		constexpr float MOUNTAIN_RUGGED_END = 0.75f;
+		constexpr float MOUNTAIN_PRESENCE_START = 0.12f;
+		constexpr float MOUNTAIN_PRESENCE_FULL = 0.45f;
+		constexpr float MOUNTAIN_BIOME_STRENGTH = 1.35f;
 
 		constexpr float PLAINS_LAND_START = 0.38f;
 		constexpr float PLAINS_LAND_END = 0.52f;
@@ -75,10 +78,45 @@ namespace voxel_game::world
 		constexpr float COAST_INLAND_START = 0.58f;
 		constexpr float COAST_INLAND_END = 0.70f;
 
-		constexpr float CLEAR_BIOME_LEAD = 0.035f;
-		constexpr float TRANSITION_NOISE_SCALE = 0.025f;
+		constexpr float CLEAR_BIOME_LEAD = 0.08f;
+		constexpr float TRANSITION_NOISE_SCALE = 0.0008f;
 		constexpr int TRANSITION_NOISE_X_OFFSET = 34001;
 		constexpr int TRANSITION_NOISE_Z_OFFSET = -27011;
+
+		constexpr float OCEAN_SELECTION_WEIGHT = 0.50f;
+		constexpr float REGION_NOISE_SCALE = 0.00055f;
+		constexpr int LANDFORM_IDENTITY_X_OFFSET = -61031;
+		constexpr int LANDFORM_IDENTITY_Z_OFFSET = -39019;
+		constexpr float MOUNTAIN_REGION_MIN_MASK = 0.26f;
+		constexpr float FORMATION_REGION_MIN_MASK = 0.72f;
+		constexpr float GLACIER_MAX_TEMPERATURE = 0.28f;
+		constexpr float MESA_MIN_TEMPERATURE = 0.56f;
+		constexpr float MESA_MAX_HUMIDITY = 0.40f;
+		constexpr float ROCKY_IDENTITY_END = 0.38f;
+		constexpr float MESA_IDENTITY_END = 0.63f;
+		constexpr float VOLCANIC_IDENTITY_START = 0.82f;
+
+		bool isLandformBiome(BiomeType type)
+		{
+			switch (type)
+			{
+			case BiomeType::Mountains:
+			case BiomeType::RockyHighlands:
+			case BiomeType::Volcanic:
+			case BiomeType::Mesa:
+			case BiomeType::Glacier:
+				return true;
+			default:
+				return false;
+			}
+		}
+
+		bool isClimateBiome(BiomeType type)
+		{
+			return type != BiomeType::Ocean
+				&& type != BiomeType::StonyCoast
+				&& !isLandformBiome(type);
+		}
 	}
 
 	BiomeSelector::BiomeSelector(long seed)
@@ -104,6 +142,10 @@ namespace voxel_game::world
 			MOUNTAIN_INLAND_START, MOUNTAIN_INLAND_END, terrain.continentalness);
 		float rugged = 1.0f - glm::smoothstep(
 			MOUNTAIN_RUGGED_START, MOUNTAIN_RUGGED_END, terrain.erosion);
+		const float mountainPresence = glm::smoothstep(
+			MOUNTAIN_PRESENCE_START,
+			MOUNTAIN_PRESENCE_FULL,
+			terrain.mountainRangeMask);
 
 		float plainsLand = glm::smoothstep(
 			PLAINS_LAND_START, PLAINS_LAND_END, terrain.continentalness);
@@ -167,7 +209,8 @@ namespace voxel_game::world
 		const float mesa = land * warm * dry
 			* glm::smoothstep(0.30f, 0.72f,
 				terrain.plateauCliffMask * 0.65f + badlandsRugged * 0.35f) * 1.15f;
-		const float glacier = mountainInland * veryCold * rugged * 1.40f;
+		const float glacier =
+			mountainInland * veryCold * rugged * mountainPresence * 1.40f;
 		const float stonyCoast = coastBand
 			* glm::smoothstep(0.25f, 0.70f,
 				terrain.coastMask * 0.65f + rugged * 0.35f) * 1.20f;
@@ -175,7 +218,8 @@ namespace voxel_game::world
 		return {
 			{BIOMES.at(BiomeType::Ocean), ocean},
 			{BIOMES.at(BiomeType::Desert), desertInland * desertClimate},
-			{BIOMES.at(BiomeType::Mountains), mountainInland * rugged},
+			{BIOMES.at(BiomeType::Mountains),
+				mountainInland * rugged * mountainPresence * MOUNTAIN_BIOME_STRENGTH},
 			{BIOMES.at(BiomeType::Plains), plains},
 			{BIOMES.at(BiomeType::Marsh), marshCoast * marshClimate * MARSH_STRENGTH},
 			{BIOMES.at(BiomeType::Badlands), badlandsInland * badlandsClimate},
@@ -222,19 +266,82 @@ namespace voxel_game::world
 		return match == weights.end() ? 0.0f : match->weight;
 	}
 
-	const Biome* BiomeSelector::select(std::vector<BiomeWeight> weights, int x, int z)
+	const Biome* BiomeSelector::select(
+		std::vector<BiomeWeight> weights,
+		const TerrainSample& terrain,
+		int x,
+		int z)
 	{
-		weights = normalize(std::move(weights));
-		std::sort(weights.begin(), weights.end(), [](const BiomeWeight& a, const BiomeWeight& b) {
-			return a.weight > b.weight;
-		});
+		auto findWeight = [&weights](BiomeType type) {
+			auto match = std::find_if(
+				weights.begin(), weights.end(), [type](const BiomeWeight& weight) {
+					return weight.biome->type == type;
+				});
+			return match == weights.end() ? 0.0f : glm::clamp(match->weight, 0.0f, 1.0f);
+		};
 
-		const BiomeWeight& strongest = weights[0];
-		const BiomeWeight& second = weights[1];
+		auto regionNoise = [this, x, z](int xOffset, int zOffset) {
+			return m_noiseGenerator.noise2(
+				x + xOffset, z + zOffset, REGION_NOISE_SCALE, 2.0f, 0.5f, 1);
+		};
+
+		const float oceanWeight = findWeight(BiomeType::Ocean);
+		if (oceanWeight >= OCEAN_SELECTION_WEIGHT)
+		{
+			return BIOMES.at(BiomeType::Ocean);
+		}
+
+		const bool mountainRegion =
+			terrain.mountainRangeMask >= MOUNTAIN_REGION_MIN_MASK;
+		const bool formationRegion =
+			terrain.formationMask >= FORMATION_REGION_MIN_MASK;
+		if (mountainRegion || formationRegion)
+		{
+			const float identity = regionNoise(
+				LANDFORM_IDENTITY_X_OFFSET, LANDFORM_IDENTITY_Z_OFFSET);
+			if (mountainRegion && terrain.temperature <= GLACIER_MAX_TEMPERATURE)
+			{
+				return BIOMES.at(BiomeType::Glacier);
+			}
+			if (terrain.temperature >= MESA_MIN_TEMPERATURE
+				&& terrain.humidity <= MESA_MAX_HUMIDITY
+				&& identity <= MESA_IDENTITY_END)
+			{
+				return BIOMES.at(BiomeType::Mesa);
+			}
+			if (formationRegion && identity >= VOLCANIC_IDENTITY_START)
+			{
+				return BIOMES.at(BiomeType::Volcanic);
+			}
+			return BIOMES.at(
+				identity <= ROCKY_IDENTITY_END
+					? BiomeType::RockyHighlands
+					: BiomeType::Mountains);
+		}
+
+		std::vector<BiomeWeight> selectedLayer;
+		selectedLayer.reserve(weights.size());
+		for (const auto& weight : weights)
+		{
+			if (isClimateBiome(weight.biome->type)) selectedLayer.push_back(weight);
+		}
+		selectedLayer = normalize(std::move(selectedLayer));
+		std::sort(
+			selectedLayer.begin(),
+			selectedLayer.end(),
+			[](const BiomeWeight& a, const BiomeWeight& b) {
+				return a.weight > b.weight;
+			});
+
+		if (selectedLayer.empty()) return BIOMES.at(BiomeType::Plains);
+		if (selectedLayer.size() == 1) return selectedLayer.front().biome;
+
+		const BiomeWeight& strongest = selectedLayer[0];
+		const BiomeWeight& second = selectedLayer[1];
 		if (strongest.weight - second.weight >= CLEAR_BIOME_LEAD) return strongest.biome;
 
-		float strongestChance = strongest.weight / (strongest.weight + second.weight);
-		float transitionNoise = m_noiseGenerator.noise2(
+		const float strongestChance = strongest.weight / (strongest.weight + second.weight);
+		const float transitionNoise = m_noiseGenerator.noise2(
 			x + TRANSITION_NOISE_X_OFFSET,
 			z + TRANSITION_NOISE_Z_OFFSET,
 			TRANSITION_NOISE_SCALE, 2.0f, 0.5f, 1);

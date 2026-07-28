@@ -28,6 +28,10 @@ namespace voxel_game::world
 		std::vector<BiomeWeight> buildWeights(const TerrainSample& terrain) const;
 		std::vector<BiomeWeight> normalize(std::vector<BiomeWeight> weights) const;
 		float getWeight(const TerrainSample& terrain, BiomeType biome) const;
-		const Biome* select(std::vector<BiomeWeight> weights, int x, int z);
+		const Biome* select(
+			std::vector<BiomeWeight> weights,
+			const TerrainSample& terrain,
+			int x,
+			int z);
 	};
 }

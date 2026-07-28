@@ -42,7 +42,9 @@ namespace voxel_game::world
 		int m_breakBlockProgress = 0;
 		MemoryDiagnostics m_memoryDiagnostics;
 		GenerationDiagnostics m_generationDiagnostics;
+		WorldGenDiagnostics m_worldGenDiagnostics;
 		std::chrono::steady_clock::time_point m_nextMemoryDiagnosticsUpdate = {};
+		std::chrono::steady_clock::time_point m_nextWorldGenDiagnosticsUpdate = {};
 
 		void removeBlock(const BlockPos& blockPos);
 		void putBlock(const Block& block);

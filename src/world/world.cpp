@@ -147,6 +147,47 @@ namespace voxel_game::world
 		}
 
 		const auto now = std::chrono::steady_clock::now();
+		if (now >= m_nextWorldGenDiagnosticsUpdate)
+		{
+			const TerrainDebugSample terrain =
+				m_worldGenerator.getTerrainDebugSample(playerPos.x, playerPos.z);
+			auto terrainName = [](TerrainType type)
+			{
+				switch (type)
+				{
+				case TerrainType::Flatlands: return "Flatlands";
+				case TerrainType::RollingHills: return "Rolling hills";
+				case TerrainType::Highlands: return "Highlands";
+				case TerrainType::Plateaus: return "Plateaus";
+				case TerrainType::Mountains: return "Mountains";
+				case TerrainType::Valleys: return "Valley";
+				case TerrainType::Canyons: return "Canyon";
+				case TerrainType::Ocean: return "Ocean";
+				}
+				return "Unknown";
+			};
+			m_worldGenDiagnostics = {
+				toString(terrain.biome),
+				terrainName(terrain.dominantTerrain),
+				terrain.surfaceHeight,
+				terrain.continentalness,
+				terrain.erosion,
+				terrain.temperature,
+				terrain.humidity,
+				terrain.mountainRanges,
+				terrain.mountainCores,
+				terrain.mountainPeaks,
+				terrain.mountainPasses,
+				terrain.valleys,
+				terrain.canyons,
+				terrain.erosionGullies,
+				terrain.talus,
+				terrain.deposition,
+				terrain.rivers,
+				terrain.riverFlow
+			};
+			m_nextWorldGenDiagnosticsUpdate = now + std::chrono::milliseconds(250);
+		}
 		if (now >= m_nextMemoryDiagnosticsUpdate)
 		{
 			m_memoryDiagnostics = collectMemoryDiagnostics();
@@ -163,6 +204,7 @@ namespace voxel_game::world
 		debugInfo.z = playerPos.z;
 		debugInfo.memory = m_memoryDiagnostics;
 		debugInfo.generation = m_generationDiagnostics;
+		debugInfo.worldGen = m_worldGenDiagnostics;
 		return debugInfo;
 	}
 
@@ -229,6 +271,15 @@ namespace voxel_game::world
 
 	BlockTypeId World::getBlock(const BlockPos& blockPos)
 	{
+		if (blockPos.y < 0)
+		{
+			return BlockTypeId::BEDROCK;
+		}
+		if (blockPos.y >= WORLD_HEIGHT)
+		{
+			return BlockTypeId::AIR;
+		}
+
 		BlockPos chunkCoord = getChunkCoord(blockPos);
 		Chunk* chunk = m_chunkManager.getChunk(chunkCoord);
 		if (chunk == nullptr)

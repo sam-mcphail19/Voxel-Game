@@ -3,6 +3,9 @@
 #include <array>
 #include <functional>
 #include "noiseGenerator.hpp"
+#include "mountainRangeGenerator.hpp"
+#include "valleyGenerator.hpp"
+#include "erosionGenerator.hpp"
 
 namespace voxel_game::world
 {
@@ -12,7 +15,10 @@ namespace voxel_game::world
 		RollingHills,
 		Highlands,
 		Plateaus,
-		Mountains
+		Mountains,
+		Valleys,
+		Canyons,
+		Ocean
 	};
 
 	struct TerrainSample
@@ -23,6 +29,17 @@ namespace voxel_game::world
 		float humidity;
 		float ridge;
 		float mountainMask;
+		float mountainRangeMask;
+		float mountainFoothillMask;
+		float mountainCoreMask;
+		float mountainPeakMask;
+		float mountainPassMask;
+		float valleyMask;
+		float canyonMask;
+		float erosionGullyMask;
+		float talusMask;
+		float depositionMask;
+		float erosionHeightDelta;
 		float coastMask;
 		float plateauCliffMask;
 		float formationMask;
@@ -42,7 +59,19 @@ namespace voxel_game::world
 
 	private:
 		NoiseGenerator m_noiseGenerator;
+		MountainRangeGenerator m_mountainRangeGenerator;
+		ValleyGenerator m_valleyGenerator;
+		ErosionGenerator m_erosionGenerator;
 		PlainsWeightSampler m_plainsWeightSampler;
+
+		struct PipelineState;
+		void sampleClimate(PipelineState& state);
+		void placeMacroLandforms(PipelineState& state);
+		void blendTerrainProfiles(PipelineState& state);
+		void composeBaseElevation(PipelineState& state);
+		void applyErosion(PipelineState& state);
+		void shapeOceanAndCoast(PipelineState& state);
+		TerrainSample finalizeTerrain(PipelineState& state);
 
 	public:
 		TerrainGenerator(long seed, PlainsWeightSampler plainsWeightSampler);
