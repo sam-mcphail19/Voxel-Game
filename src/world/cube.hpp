@@ -59,6 +59,11 @@ namespace voxel_game::world
 				{BlockTypeId::MARSH_GRASS, BlockType(BlockTypeId::MARSH_GRASS, [](Block block) { return multiTextureCube(block, g::AtlasTexture::MUD, g::AtlasTexture::MUD, g::AtlasTexture::MUD, g::AtlasTexture::MUD, g::AtlasTexture::MARSH_GRASS, g::AtlasTexture::MUD); })},
 				{BlockTypeId::MUD, BlockType(BlockTypeId::MUD, [](Block block) { return singleTextureCube(block, g::AtlasTexture::MUD); })},
 				{BlockTypeId::RED_SANDSTONE, BlockType(BlockTypeId::RED_SANDSTONE, [](Block block) { return singleTextureCube(block, g::AtlasTexture::RED_SANDSTONE); })},
+				{BlockTypeId::DECIDUOUS_LOG, BlockType(BlockTypeId::DECIDUOUS_LOG, [](Block block) { return singleTextureCube(block, g::AtlasTexture::DECIDUOUS_LOG); })},
+				{BlockTypeId::DECIDUOUS_LEAVES, BlockType(BlockTypeId::DECIDUOUS_LEAVES, [](Block block) { return singleTextureCube(block, g::AtlasTexture::DECIDUOUS_LEAVES); })},
+				{BlockTypeId::CONIFER_LOG, BlockType(BlockTypeId::CONIFER_LOG, [](Block block) { return singleTextureCube(block, g::AtlasTexture::CONIFER_LOG); })},
+				{BlockTypeId::CONIFER_LEAVES, BlockType(BlockTypeId::CONIFER_LEAVES, [](Block block) { return singleTextureCube(block, g::AtlasTexture::CONIFER_LEAVES); })},
+				{BlockTypeId::CACTUS, BlockType(BlockTypeId::CACTUS, [](Block block) { return singleTextureCube(block, g::AtlasTexture::CACTUS); })},
 			};
 			return blockTypes.at(id);
 		}

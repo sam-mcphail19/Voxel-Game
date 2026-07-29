@@ -18,7 +18,8 @@
 #define NORMAL_SIZE 3
 #define UV_SIZE 2
 #define ATLAS_TILE_SIZE 2
-#define VERTEX_FLOAT_SIZE 10
+#define AO_SIZE 1
+#define VERTEX_FLOAT_SIZE 11
 
 #define FLAGS_SIZE 1
 #define BLOCK_TYPE_SIZE 1
@@ -33,12 +34,13 @@ namespace voxel_game::graphics
 		glm::vec3 m_normal;
 		glm::vec2 m_uv;
 		glm::vec2 m_atlasTile;
+		float m_ambientOcclusion;
 		int m_flags;
 		int m_blockType;
 		world::BlockPos m_blockPos;
 
-		Vertex(glm::vec3 pos, glm::vec3 normal, glm::vec2 uv, world::BlockTypeId blockTypeId, world::BlockPos blockPos, bool isBlockVert, glm::vec2 atlasTile = glm::vec2(0.f))
-			: m_position(pos), m_normal(normal), m_uv(uv), m_atlasTile(atlasTile), m_blockType((int)blockTypeId), m_blockPos(blockPos)
+		Vertex(glm::vec3 pos, glm::vec3 normal, glm::vec2 uv, world::BlockTypeId blockTypeId, world::BlockPos blockPos, bool isBlockVert, glm::vec2 atlasTile = glm::vec2(0.f), float ambientOcclusion = 1.0f)
+			: m_position(pos), m_normal(normal), m_uv(uv), m_atlasTile(atlasTile), m_ambientOcclusion(ambientOcclusion), m_blockType((int)blockTypeId), m_blockPos(blockPos)
 		{
 			m_flags = isBlockVert;
 		}
@@ -83,6 +85,7 @@ namespace voxel_game::graphics
 		~Mesh();
 		void upload();
 		void render();
+		void renderGeometry();
 		bool isUploaded() const;
 		physics::Transform* getTransform();
 		std::vector<Vertex> getVertices();

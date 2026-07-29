@@ -51,6 +51,7 @@ namespace voxel_game::graphics
 			return false;
 		}
 
+		glfwWindowHint(GLFW_SAMPLES, 4);
 		m_window = glfwCreateWindow(m_width, m_height, m_name.c_str(), nullptr, nullptr);
 
 		if (!m_window)
@@ -76,6 +77,8 @@ namespace voxel_game::graphics
 
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
+
+		glEnable(GL_MULTISAMPLE);
 
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);

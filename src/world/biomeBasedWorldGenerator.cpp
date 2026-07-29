@@ -58,7 +58,8 @@ namespace voxel_game::world
 				  terrain.canyonMask
 			  };
 		  }),
-		  m_caveGenerator(seed) {}
+		  m_caveGenerator(seed),
+		  m_surfaceFeatureGenerator(seed) {}
 
 	float BiomeBasedWorldGenerator::calcContinentalness(int x, int z)
 	{
@@ -221,9 +222,13 @@ namespace voxel_game::world
 		return std::min(terrainDensity, caveDensity);
 	}
 
-	bool BiomeBasedWorldGenerator::isWater(const TerrainSample& terrain, int y) const
+	bool BiomeBasedWorldGenerator::isWater(
+		const TerrainSample& terrain,
+		int surfaceHeight,
+		int y
+	) const
 	{
-		return (y <= WATER_HEIGHT && terrain.height < WATER_HEIGHT)
+		return (y <= WATER_HEIGHT && surfaceHeight < WATER_HEIGHT)
 			|| (terrain.riverMask > RIVER_WATER_MASK_THRESHOLD
 				&& y <= static_cast<int>(std::floor(terrain.riverSurfaceHeight)));
 	}
@@ -329,7 +334,7 @@ namespace voxel_game::world
 
 		if (calculateDensity(terrain, x, y, z) <= 0.0f)
 		{
-			return isWater(terrain, y)
+			return isWater(terrain, surfaceHeight, y)
 				? getWaterBlockType(dominantBiome, terrain, y)
 				: BlockTypeId::AIR;
 		}
@@ -410,7 +415,11 @@ namespace voxel_game::world
 						}
 						else if (calculateDensity(terrain, column.cave, worldX, worldY, worldZ) <= 0.0f)
 						{
-							blockTypeId = isWater(terrain, worldY)
+							blockTypeId = isWater(
+								terrain,
+								surfaceHeight,
+								worldY
+							)
 								? getWaterBlockType(dominantBiome, terrain, worldY)
 								: BlockTypeId::AIR;
 						}
@@ -427,6 +436,32 @@ namespace voxel_game::world
 			}
 			WorldProfiler::instance().increment(ProfileCounter::BlockAssignments, CHUNK_BLOCK_COUNT);
 		}
+
+		m_surfaceFeatureGenerator.generate(
+			chunk,
+			[this](int worldX, int worldZ) {
+				const TerrainSample terrain = sampleTerrain(worldX, worldZ);
+				const CaveColumnSample cave = m_caveGenerator.sampleColumn(worldX, worldZ);
+				const int surfaceHeight =
+					calculateSurfaceHeight(terrain, cave, worldX, worldZ);
+				const auto weights = buildWeights(terrain);
+				const Biome* biome = selectBiome(
+					weights, terrain, worldX, worldZ);
+				const float slope = calculateSlope(worldX, worldZ);
+				return SurfaceFeatureColumn{
+					surfaceHeight,
+					biome->type,
+					getSurfaceBlockType(
+						biome,
+						terrain,
+						slope,
+						worldX,
+						worldZ,
+						surfaceHeight),
+					slope,
+					surfaceHeight <= WATER_HEIGHT
+				};
+			});
 	}
 
 }

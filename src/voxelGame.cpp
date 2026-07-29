@@ -60,7 +60,6 @@ namespace voxel_game
 		{
 			m_isDebugEnabled = !m_isDebugEnabled;
 		}
-
 		draw();
 
 		const auto endTime = std::chrono::steady_clock::now();
@@ -106,7 +105,16 @@ namespace voxel_game
 		m_meshUploads += m_world->uploadPendingMeshes();
 
 		std::vector<world::Chunk*> visibleChunks = m_world->getVisibleChunks();
-		m_renderStats = m_renderer.renderChunks(visibleChunks, &m_chunkShader, m_player->getCamera());
+		m_renderer.renderShadowMap(
+			visibleChunks,
+			&m_shadowShader,
+			m_player->getCamera());
+		m_renderer.renderSky(&m_skyShader, m_player->getCamera());
+		m_renderStats = m_renderer.renderChunks(
+			visibleChunks,
+			&m_chunkShader,
+			&m_waterShader,
+			m_player->getCamera());
 
 		std::vector<g::Mesh*> orthoMeshes = std::vector<g::Mesh*>{ m_crosshair->getMesh()};
 

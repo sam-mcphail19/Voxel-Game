@@ -35,6 +35,11 @@ namespace voxel_game::world
 		LAVA,
 		SALT,
 		TERRACOTTA,
+		DECIDUOUS_LOG,
+		DECIDUOUS_LEAVES,
+		CONIFER_LOG,
+		CONIFER_LEAVES,
+		CACTUS,
 	};
 
 	std::string toString(BlockTypeId id);

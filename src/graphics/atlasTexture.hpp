@@ -29,6 +29,11 @@ namespace voxel_game::graphics
 		LAVA,
 		SALT,
 		TERRACOTTA,
+		DECIDUOUS_LOG,
+		DECIDUOUS_LEAVES,
+		CONIFER_LOG,
+		CONIFER_LEAVES,
+		CACTUS,
 	};
 
 	const std::map<AtlasTexture, std::string> atlasTextureToNameMap = {
@@ -54,6 +59,11 @@ namespace voxel_game::graphics
 		{AtlasTexture::LAVA, "lava"},
 		{AtlasTexture::SALT, "salt"},
 		{AtlasTexture::TERRACOTTA, "terracotta"},
+		{AtlasTexture::DECIDUOUS_LOG, "deciduous_log"},
+		{AtlasTexture::DECIDUOUS_LEAVES, "deciduous_leaves"},
+		{AtlasTexture::CONIFER_LOG, "conifer_log"},
+		{AtlasTexture::CONIFER_LEAVES, "conifer_leaves"},
+		{AtlasTexture::CACTUS, "cactus"},
 	};
 
 	std::string getName(AtlasTexture tex);

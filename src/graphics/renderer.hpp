@@ -30,14 +30,30 @@ namespace voxel_game::graphics
 	{
 	public:
 		Renderer(const Window& window);
+		~Renderer();
 		
+		void renderSky(Shader* shader, Camera* camera);
+		void renderShadowMap(
+			std::vector<world::Chunk*> chunks,
+			Shader* shader,
+			Camera* camera);
 		void renderPersp(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
-		RenderStats renderChunks(std::vector<world::Chunk*> chunks, Shader *shader, Camera *camera);
+		RenderStats renderChunks(
+			std::vector<world::Chunk*> chunks,
+			Shader* terrainShader,
+			Shader* waterShader,
+			Camera* camera);
 		void renderOrtho(std::vector<Mesh*> meshes, Shader *shader, Camera *camera);
 		void renderUi(bool isDebugEnabled, world::DebugInfo debugInfo);
 
 	private:
 		UiRenderer m_uiRenderer;
+		GLuint m_skyVao = 0;
+		GLuint m_shadowFramebuffer = 0;
+		GLuint m_shadowDepthTexture = 0;
+		int m_windowWidth;
+		int m_windowHeight;
+		glm::mat4 m_lightSpaceMatrix = glm::mat4(1.0f);
 
 		void setupPerspRender(Shader* shader, Camera* camera);
 		void clear();

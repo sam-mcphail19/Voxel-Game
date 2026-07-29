@@ -1,27 +1,47 @@
 #include "textureAtlas.hpp"
 
+#include <algorithm>
+
 namespace voxel_game::graphics
 {
 	int texturesPerRow;
 	std::unordered_map<std::string, glm::vec2> textureAtlasMap;
+	Texture* textureAtlas = nullptr;
 
 	void createTextureAtlas()
 	{
 		std::vector<std::string> paths = voxel_game::utils::walkPath("res/texture/texture_atlas");
+		std::sort(paths.begin(), paths.end());
 
 		texturesPerRow = static_cast<int>(std::ceil(std::sqrt(paths.size())));
 		const int width = texturesPerRow * ATLAS_TEXTURE_SIZE;
 		const int height = texturesPerRow * ATLAS_TEXTURE_SIZE;
 
 		std::vector<unsigned char> result(width * height * 4, 255);
+		std::vector<unsigned char> layers(
+			paths.size() * ATLAS_PIXELS_PER_TEXTURE * 4);
 
 		stbi_set_flip_vertically_on_load(0);
 
 		int x = 0, y = 0;
-		for (std::string path : paths)
+		for (size_t layer = 0; layer < paths.size(); ++layer)
 		{
+			const std::string& path = paths[layer];
 			int newWidth, newHeight, bitsPerPixel;
 			unsigned char *image = stbi_load(path.c_str(), &newWidth, &newHeight, &bitsPerPixel, 4);
+			if (!image)
+			{
+				log::error("Could not load atlas texture " + path);
+				continue;
+			}
+			if (newWidth != ATLAS_TEXTURE_SIZE || newHeight != ATLAS_TEXTURE_SIZE)
+			{
+				log::error(
+					path + " must be " + std::to_string(ATLAS_TEXTURE_SIZE)
+					+ "x" + std::to_string(ATLAS_TEXTURE_SIZE));
+				stbi_image_free(image);
+				continue;
+			}
 
 			for (int j = 0; j < newHeight; ++j)
 			{
@@ -29,17 +49,25 @@ namespace voxel_game::graphics
 				{
 					int resultIndex = ((y + j) * width + (x + i)) * 4;
 					int imageIndex = (j * newWidth + i) * 4;
+					int flippedImageIndex =
+						((newHeight - 1 - j) * newWidth + i) * 4;
+					int layerIndex = (
+						static_cast<int>(layer) * ATLAS_PIXELS_PER_TEXTURE
+						+ j * newWidth + i) * 4;
 
 					result[resultIndex] = image[imageIndex];
 					result[resultIndex + 1] = image[imageIndex + 1];
 					result[resultIndex + 2] = image[imageIndex + 2];
 					result[resultIndex + 3] = image[imageIndex + 3];
+					layers[layerIndex] = image[flippedImageIndex];
+					layers[layerIndex + 1] = image[flippedImageIndex + 1];
+					layers[layerIndex + 2] = image[flippedImageIndex + 2];
+					layers[layerIndex + 3] = image[flippedImageIndex + 3];
 				}
 			}
 
-			float texX = (float)x / width;
-			float texY = 1 - (float)y / height - ATLAS_TEXTURE_SIZE / (float) height;
-			textureAtlasMap[voxel_game::utils::getFileName(path)] = glm::vec2{texX, texY};
+			textureAtlasMap[voxel_game::utils::getFileName(path)] =
+				glm::vec2{static_cast<float>(layer), 0.0f};
 
 			x += ATLAS_TEXTURE_SIZE;
 			if (x >= width)
@@ -57,7 +85,11 @@ namespace voxel_game::graphics
 			log::error("Error " + std::to_string(error) + ": " + lodepng_error_text(error)); 
 		}
 
-		loadTextureAtlas();
+		textureAtlas = createTextureArray(
+			ATLAS_TEXTURE_SIZE,
+			ATLAS_TEXTURE_SIZE,
+			static_cast<int>(paths.size()),
+			layers.data());
 	}
 
 	int getTextureAtlasSize()
@@ -86,11 +118,11 @@ namespace voxel_game::graphics
 
 	glm::vec2 getTextureAtlasTileCoords(AtlasTexture texture)
 	{
-		return getTextureAtlasCoords(texture) / getTextureAtlasTextureSize();
+		return getTextureAtlasCoords(texture);
 	}
 
 	Texture* loadTextureAtlas()
 	{
-		return loadTexture(TEXTURE_ATLAS_PATH);
+		return textureAtlas;
 	}
 }

@@ -9,6 +9,7 @@ layout (location = 5) in int i_blockPosX;
 layout (location = 6) in int i_blockPosY;
 layout (location = 7) in int i_blockPosZ;
 layout (location = 8) in vec2 i_atlasTileCoords;
+layout (location = 9) in float i_ambientOcclusion;
 
 uniform mat4 u_view;
 uniform mat4 u_projection;
@@ -16,12 +17,20 @@ uniform float u_currTime;
 uniform int u_isSelectedBlock;
 uniform ivec3 u_selectedBlock;
 uniform float u_blockBreakProgress;
+uniform vec3 u_sunDirection;
+uniform float u_ambientLight;
+uniform float u_sunLight;
+uniform float u_minAmbientOcclusion;
+uniform mat4 u_lightSpaceMatrix;
 
 out vec4 v_color;
 out vec3 v_position;
 out vec3 v_normal;
 out vec2 v_texCoords;
-out vec2 v_atlasTileCoords;
+out float v_diffuse;
+out float v_ambientOcclusion;
+out vec4 v_lightSpacePosition;
+flat out int v_textureLayer;
 
 float lerp(float a, float b, float t) {
     return a + (b - a) * t;
@@ -35,17 +44,16 @@ void main(void) {
         v_color = vec4(0, 0, 0, 1);
     }
 
-    // TODO: Real lighting
-    if (i_normal == vec3(1, 0, 0) || i_normal == vec3(-1, 0, 0)) {
-        v_color = v_color - vec4(vec3(0.1), 0);
-    } else if (i_normal == vec3(0, 0, 1) || i_normal == vec3(0, 0, -1)) {
-        v_color = v_color - vec4(vec3(0.05), 0);
-    }
+    v_diffuse = max(dot(i_normal, normalize(u_sunDirection)), 0.0);
+    v_ambientOcclusion = mix(
+        u_minAmbientOcclusion,
+        1.0,
+        i_ambientOcclusion);
 
     v_position = i_position;
     v_normal = i_normal;
     v_texCoords = i_texCoords;
-    v_atlasTileCoords = i_atlasTileCoords;
+    v_textureLayer = int(i_atlasTileCoords.x);
 
     ivec3 blockPos = ivec3(i_blockPosX, i_blockPosY, i_blockPosZ);
 
@@ -60,4 +68,5 @@ void main(void) {
 
     mat4 mvp = u_projection * u_view;
     gl_Position = mvp * vec4(position, 1.0);
+    v_lightSpacePosition = u_lightSpaceMatrix * vec4(position, 1.0);
 }

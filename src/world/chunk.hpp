@@ -47,6 +47,8 @@ namespace voxel_game::world
 		std::array<bool, CHUNK_LOD_LEVEL_COUNT> m_lodBuildQueued = {};
 		std::mutex m_mutex;
 
+		using ShoreProximityCache = std::map<BlockPos, float>;
+
 		bool isBlockInBounds(const BlockPos& blockPos) const;
 		bool isFaceVisible(const BlockTypeId& blockTypeId, const Face& face, ChunkManager& chunkManager);
 		bool isLodFaceVisible(const BlockTypeId& blockTypeId, const Face& face, int lodScale, ChunkManager& chunkManager);
@@ -54,13 +56,40 @@ namespace voxel_game::world
 		BlockTypeId getRepresentativeBlockType(BlockPos blockPos, int lodScale);
 		int getHighestWaterY(BlockPos blockPos, int lodScale);
 		BlockTypeId getBlockForLodOcclusion(BlockPos blockPos, ChunkManager& chunkManager);
+		float calculateVertexAo(g::Direction direction, BlockPos worldBlockPos, const glm::vec3& vertexPosition, const glm::vec3& scale, int lodScale);
+		float calculateShoreProximity(
+			const glm::vec3& worldVertexPosition,
+			ShoreProximityCache& cache
+		);
+		uint8_t calculateFaceAoSignature(g::Direction direction, BlockPos worldBlockPos, int lodScale);
 		void buildMeshForLod(int lodScale, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
 		void buildGreedyOpaqueMeshForLod(int lodScale, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
 		void buildGreedyMeshForLod(int lodScale, bool waterOnly, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
 		void buildTransparentMeshForLod(int lodScale, const std::vector<BlockTypeId>& representatives, ChunkManager& chunkManager, std::vector<g::Vertex>& transparentVertices, std::vector<GLuint>& transparentIndices);
 
-		void addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale = glm::vec3(1.f), int lodScale = 1);
-		void addGreedyFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos blockPos, int width, int height, int lodScale, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices);
+		void addFaceToMesh(
+			BlockTypeId blockTypeId,
+			g::Direction direction,
+			BlockPos worldBlockPos,
+			std::vector<g::Vertex>& vertices,
+			std::vector<GLuint>& indices,
+			glm::vec3 scale = glm::vec3(1.f),
+			int lodScale = 1,
+			int aoSignature = -1,
+			ShoreProximityCache* shoreProximityCache = nullptr
+		);
+		void addGreedyFaceToMesh(
+			BlockTypeId blockTypeId,
+			g::Direction direction,
+			BlockPos blockPos,
+			int width,
+			int height,
+			int lodScale,
+			uint8_t aoSignature,
+			std::vector<g::Vertex>& vertices,
+			std::vector<GLuint>& indices,
+			ShoreProximityCache* shoreProximityCache
+		);
 
 	public:
 		Chunk(BlockPos chunkCoord, World* world);

@@ -11,6 +11,7 @@
 #include "caveGenerator.hpp"
 #include "terrainGenerator.hpp"
 #include "biomeSelector.hpp"
+#include "surfaceFeatureGenerator.hpp"
 #include "../common/threadSafeMap.hpp"
 #include "../util/mathUtils.hpp"
 #include "../util/log.hpp"
@@ -56,12 +57,17 @@ namespace voxel_game::world
 		TerrainGenerator m_terrainGenerator;
 		HydrologyGenerator m_hydrologyGenerator;
 		CaveGenerator m_caveGenerator;
+		SurfaceFeatureGenerator m_surfaceFeatureGenerator;
 		ThreadSafeMap<int, std::unordered_map<int, int>> m_heightMap;
 
 		TerrainSample sampleTerrain(int x, int z);
 		float calculateDensity(const TerrainSample& terrain, int x, int y, int z);
 		float calculateDensity(const TerrainSample& terrain, const CaveColumnSample& caveColumn, int x, int y, int z);
-		bool isWater(const TerrainSample& terrain, int y) const;
+		bool isWater(
+			const TerrainSample& terrain,
+			int surfaceHeight,
+			int y
+		) const;
 		int calculateSurfaceHeight(const TerrainSample& terrain, int x, int z);
 		int calculateSurfaceHeight(const TerrainSample& terrain, const CaveColumnSample& caveColumn, int x, int z);
 		float calculateSlope(int x, int z);

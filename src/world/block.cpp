@@ -27,6 +27,11 @@ namespace voxel_game::world
 			{BlockTypeId::LAVA, "Lava"},
 			{BlockTypeId::SALT, "Salt"},
 			{BlockTypeId::TERRACOTTA, "Terracotta"},
+			{BlockTypeId::DECIDUOUS_LOG, "Deciduous Log"},
+			{BlockTypeId::DECIDUOUS_LEAVES, "Deciduous Leaves"},
+			{BlockTypeId::CONIFER_LOG, "Conifer Log"},
+			{BlockTypeId::CONIFER_LEAVES, "Conifer Leaves"},
+			{BlockTypeId::CACTUS, "Cactus"},
 		};
 
 		auto it = blockTypeStrings.find(id);

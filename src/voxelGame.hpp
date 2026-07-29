@@ -28,7 +28,10 @@ namespace voxel_game
 
 		graphics::Window m_window = graphics::Window(m_title, 1920, 1080);
 		graphics::Renderer m_renderer = graphics::Renderer(m_window);
+		graphics::Shader m_skyShader = graphics::Shader("sky.vs", "sky.fs");
+		graphics::Shader m_shadowShader = graphics::Shader("shadow.vs", "shadow.fs");
 		graphics::Shader m_chunkShader = graphics::Shader("chunk.vs", "chunk.fs");
+		graphics::Shader m_waterShader = graphics::Shader("water.vs", "water.fs");
 		graphics::Shader m_uiShader = graphics::Shader("ui.vs", "ui.fs");
 
 		std::chrono::time_point<std::chrono::steady_clock> m_lastFpsUpdateTime;

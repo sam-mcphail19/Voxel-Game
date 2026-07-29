@@ -8,8 +8,25 @@ namespace voxel_game::world
 		const std::array<int, CHUNK_LOD_LEVEL_COUNT> lodScales = { 1, 2, 4 };
 		constexpr uint8_t BITS_PER_BLOCK = 5;
 		constexpr uint16_t BLOCK_ID_MASK = (1u << BITS_PER_BLOCK) - 1u;
+		// AO uses all eight bits: four two-bit corner values. In particular,
+		// 0xff is the common valid value for four fully lit corners, so absence
+		// must be represented outside the uint8_t range.
+		constexpr int NO_AO_SIGNATURE = -1;
+		constexpr uint8_t WATER_OPEN_FACE_SIGNATURE = 0xff;
 
-		static_assert(static_cast<uint8_t>(BlockTypeId::TERRACOTTA) <= BLOCK_ID_MASK,
+		struct GreedyMaskCell
+		{
+			BlockTypeId blockType = BlockTypeId::AIR;
+			uint8_t aoSignature = 0;
+
+			bool operator==(const GreedyMaskCell& other) const
+			{
+				return blockType == other.blockType
+					&& aoSignature == other.aoSignature;
+			}
+		};
+
+		static_assert(static_cast<uint8_t>(BlockTypeId::CACTUS) <= BLOCK_ID_MASK,
 			"Packed chunk storage supports at most 32 block types");
 
 		int toLodIndex(ChunkLod lod)
@@ -103,6 +120,16 @@ namespace voxel_game::world
 				return g::AtlasTexture::SALT;
 			case BlockTypeId::TERRACOTTA:
 				return g::AtlasTexture::TERRACOTTA;
+			case BlockTypeId::DECIDUOUS_LOG:
+				return g::AtlasTexture::DECIDUOUS_LOG;
+			case BlockTypeId::DECIDUOUS_LEAVES:
+				return g::AtlasTexture::DECIDUOUS_LEAVES;
+			case BlockTypeId::CONIFER_LOG:
+				return g::AtlasTexture::CONIFER_LOG;
+			case BlockTypeId::CONIFER_LEAVES:
+				return g::AtlasTexture::CONIFER_LEAVES;
+			case BlockTypeId::CACTUS:
+				return g::AtlasTexture::CACTUS;
 			default:
 				return g::AtlasTexture::STONE;
 			}
@@ -221,6 +248,7 @@ namespace voxel_game::world
 	{
 		uint64_t maskNanoseconds = 0;
 		uint64_t mergeNanoseconds = 0;
+		ShoreProximityCache shoreProximityCache;
 		for (int dirIndex = 0; dirIndex < 6; dirIndex++)
 		{
 			g::Direction dir = (g::Direction)dirIndex;
@@ -236,12 +264,12 @@ namespace voxel_game::world
 					? CHUNK_SIZE / lodScale
 					: CHUNK_HEIGHT / lodScale;
 
-			std::vector<BlockTypeId> mask(uCells * vCells, BlockTypeId::AIR);
+			std::vector<GreedyMaskCell> mask(uCells * vCells);
 
 			for (int slice = 0; slice < sliceCells; slice++)
 			{
 				const auto maskStart = std::chrono::steady_clock::now();
-				std::fill(mask.begin(), mask.end(), BlockTypeId::AIR);
+				std::fill(mask.begin(), mask.end(), GreedyMaskCell{});
 
 				for (int v = 0; v < vCells; v++)
 				{
@@ -278,7 +306,26 @@ namespace voxel_game::world
 							: isLodFaceVisible(blockTypeId, Face{ blockPos, dir }, lodScale, chunkManager);
 						if (visible)
 						{
-							mask[u + v * uCells] = blockTypeId;
+							uint8_t faceSignature;
+							if (waterOnly)
+							{
+								faceSignature = WATER_OPEN_FACE_SIGNATURE;
+							}
+							else
+							{
+								faceSignature = lodScale == 1
+									? calculateFaceAoSignature(
+										dir,
+										blockPos + m_origin,
+										lodScale
+									)
+									: WATER_OPEN_FACE_SIGNATURE;
+							}
+
+							mask[u + v * uCells] = {
+								blockTypeId,
+								faceSignature
+							};
 							if (!waterOnly)
 							{
 								WorldProfiler::instance().increment(ProfileCounter::CandidateFaces);
@@ -295,7 +342,12 @@ namespace voxel_game::world
 				{
 					for (int u = 0; u < uCells;)
 					{
-						BlockTypeId blockTypeId = mask[u + v * uCells];
+						const int waterMaxQuadSpan =
+							dir == g::Direction::TOP
+								? WATER_SURFACE_MAX_QUAD_SPAN
+								: WATER_WALL_MAX_QUAD_SPAN;
+						const GreedyMaskCell maskCell = mask[u + v * uCells];
+						BlockTypeId blockTypeId = maskCell.blockType;
 						if (blockTypeId == BlockTypeId::AIR)
 						{
 							u++;
@@ -303,18 +355,26 @@ namespace voxel_game::world
 						}
 
 						int width = 1;
-						while (u + width < uCells && mask[u + width + v * uCells] == blockTypeId)
+						while (
+							u + width < uCells
+							&& (!waterOnly || width < waterMaxQuadSpan)
+							&& mask[u + width + v * uCells] == maskCell
+						)
 						{
 							width++;
 						}
 
 						int height = 1;
 						bool canGrow = true;
-						while (v + height < vCells && canGrow)
+						while (
+							v + height < vCells
+							&& (!waterOnly || height < waterMaxQuadSpan)
+							&& canGrow
+						)
 						{
 							for (int x = 0; x < width; x++)
 							{
-								if (mask[u + x + (v + height) * uCells] != blockTypeId)
+								if (!(mask[u + x + (v + height) * uCells] == maskCell))
 								{
 									canGrow = false;
 									break;
@@ -347,7 +407,18 @@ namespace voxel_game::world
 							break;
 						}
 
-						addGreedyFaceToMesh(blockTypeId, dir, blockPos, width, height, lodScale, vertices, indices);
+						addGreedyFaceToMesh(
+							blockTypeId,
+							dir,
+							blockPos,
+							width,
+							height,
+							lodScale,
+							maskCell.aoSignature,
+							vertices,
+							indices,
+							waterOnly ? &shoreProximityCache : nullptr
+						);
 						if (!waterOnly)
 						{
 							WorldProfiler::instance().increment(ProfileCounter::EmittedGreedyQuads);
@@ -357,7 +428,7 @@ namespace voxel_game::world
 						{
 							for (int x = 0; x < width; x++)
 							{
-								mask[u + x + (v + y) * uCells] = BlockTypeId::AIR;
+								mask[u + x + (v + y) * uCells] = {};
 							}
 						}
 
@@ -423,7 +494,16 @@ namespace voxel_game::world
 
 						if (blockTypeId == BlockTypeId::WATER)
 						{
-							addFaceToMesh(blockTypeId, dir, renderBlockPos + m_origin, transparentVertices, transparentIndices, meshScale, lodScale);
+							addFaceToMesh(
+								blockTypeId,
+								dir,
+								renderBlockPos + m_origin,
+								transparentVertices,
+								transparentIndices,
+								meshScale,
+								lodScale,
+								WATER_OPEN_FACE_SIGNATURE
+							);
 						}
 					}
 				}
@@ -431,7 +511,18 @@ namespace voxel_game::world
 		}
 	}
 
-	void Chunk::addGreedyFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos blockPos, int width, int height, int lodScale, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices)
+	void Chunk::addGreedyFaceToMesh(
+		BlockTypeId blockTypeId,
+		g::Direction direction,
+		BlockPos blockPos,
+		int width,
+		int height,
+		int lodScale,
+		uint8_t aoSignature,
+		std::vector<g::Vertex>& vertices,
+		std::vector<GLuint>& indices,
+		ShoreProximityCache* shoreProximityCache
+	)
 	{
 		glm::vec3 scale(lodScale);
 		switch (direction)
@@ -455,16 +546,36 @@ namespace voxel_game::world
 			break;
 		}
 
-		addFaceToMesh(blockTypeId, direction, blockPos + m_origin, vertices, indices, scale, lodScale);
+		addFaceToMesh(
+			blockTypeId,
+			direction,
+			blockPos + m_origin,
+			vertices,
+			indices,
+			scale,
+			lodScale,
+			aoSignature,
+			shoreProximityCache
+		);
 	}
 
-	void Chunk::addFaceToMesh(BlockTypeId blockTypeId, g::Direction direction, BlockPos worldBlockPos, std::vector<g::Vertex>& vertices, std::vector<GLuint>& indices, glm::vec3 scale, int lodScale)
+	void Chunk::addFaceToMesh(
+		BlockTypeId blockTypeId,
+		g::Direction direction,
+		BlockPos worldBlockPos,
+		std::vector<g::Vertex>& vertices,
+		std::vector<GLuint>& indices,
+		glm::vec3 scale,
+		int lodScale,
+		int aoSignature,
+		ShoreProximityCache* shoreProximityCache
+	)
 	{
-		for (int j = 0; j < g::Quad::indexCount; j++)
-		{
-			indices.push_back(g::Quad::indices[j] + vertices.size());
-		}
-
+		ShoreProximityCache uncachedWaterFace;
+		ShoreProximityCache& activeShoreProximityCache =
+			shoreProximityCache != nullptr
+				? *shoreProximityCache
+				: uncachedWaterFace;
 		int vertexPositionIndex = g::Quad::vertexPositionIndexMap.at(direction);
 		int uvIndex = g::Quad::uvIndexMap.at(direction);
 		glm::vec2 atlasTileCoords = g::getTextureAtlasTileCoords(getTextureForFace(blockTypeId, direction, lodScale));
@@ -487,6 +598,44 @@ namespace voxel_game::world
 			break;
 		}
 
+		std::array<float, 4> ambientOcclusion;
+		for (int j = 0; j < g::Quad::vertexCount; ++j)
+		{
+			ambientOcclusion[j] = aoSignature == NO_AO_SIGNATURE
+				? calculateVertexAo(
+					direction,
+					worldBlockPos,
+					glm::vec3(
+						g::Quad::vertexPositions[vertexPositionIndex + j * 3],
+						g::Quad::vertexPositions[vertexPositionIndex + j * 3 + 1],
+						g::Quad::vertexPositions[vertexPositionIndex + j * 3 + 2]),
+					scale,
+					lodScale)
+				: static_cast<float>((aoSignature >> (j * 2)) & 0x3) / 3.0f;
+		}
+
+		const size_t vertexOffset = vertices.size();
+		const bool flipDiagonal =
+			ambientOcclusion[0] + ambientOcclusion[2]
+			< ambientOcclusion[1] + ambientOcclusion[3];
+		const std::array<GLuint, 6> flippedIndices = {
+			0, 1, 3, 1, 2, 3
+		};
+		if (flipDiagonal)
+		{
+			for (GLuint index : flippedIndices)
+			{
+				indices.push_back(index + vertexOffset);
+			}
+		}
+		else
+		{
+			for (GLuint index : g::Quad::indices)
+			{
+				indices.push_back(index + vertexOffset);
+			}
+		}
+
 		for (int j = 0; j < g::Quad::vertexCount; j++)
 		{
 			glm::vec3 vertexPos = glm::vec3(
@@ -498,17 +647,209 @@ namespace voxel_game::world
 				g::Quad::uvs[uvIndex + j * 2] * uvRepeat.x,
 				g::Quad::uvs[uvIndex + j * 2 + 1] * uvRepeat.y
 			);
-
+			glm::vec3 worldVertexPosition = toVec3(worldBlockPos) + vertexPos * scale;
+			float vertexData = ambientOcclusion[j];
+			if (blockTypeId == BlockTypeId::WATER)
+			{
+				if (direction != g::Direction::BOTTOM)
+				{
+					vertexData = calculateShoreProximity(
+						worldVertexPosition,
+						activeShoreProximityCache
+					);
+				}
+			}
 			vertices.push_back(g::Vertex(
-				toVec3(worldBlockPos) + vertexPos * scale,
+				worldVertexPosition,
 				g::getNormal(direction),
 				uv,
 				blockTypeId,
 				worldBlockPos,
 				true,
-				atlasTileCoords
+				atlasTileCoords,
+				vertexData
 			));
 		}
+	}
+
+	float Chunk::calculateShoreProximity(
+		const glm::vec3& worldVertexPosition,
+		ShoreProximityCache& cache
+	)
+	{
+		const int waterBlockY =
+			static_cast<int>(std::round(worldVertexPosition.y)) - 1;
+		const int vertexX = static_cast<int>(std::floor(worldVertexPosition.x));
+		const int vertexZ = static_cast<int>(std::floor(worldVertexPosition.z));
+		const BlockPos cacheKey = {
+			vertexX,
+			waterBlockY,
+			vertexZ
+		};
+		const auto cached = cache.find(cacheKey);
+		if (cached != cache.end())
+		{
+			return cached->second;
+		}
+
+		float nearestShoreDistance =
+			static_cast<float>(WATER_SHORE_DISTANCE_BLOCKS + 1);
+
+		for (int zOffset = -WATER_SHORE_DISTANCE_BLOCKS;
+			zOffset <= WATER_SHORE_DISTANCE_BLOCKS;
+			++zOffset)
+		{
+			for (int xOffset = -WATER_SHORE_DISTANCE_BLOCKS;
+				xOffset <= WATER_SHORE_DISTANCE_BLOCKS;
+				++xOffset)
+			{
+				const BlockPos samplePosition = {
+					vertexX + xOffset,
+					waterBlockY,
+					vertexZ + zOffset
+				};
+				if (!isSolid(m_world->getBlock(samplePosition)))
+				{
+					continue;
+				}
+
+				const glm::vec2 blockMin(
+					static_cast<float>(samplePosition.x),
+					static_cast<float>(samplePosition.z)
+				);
+				const glm::vec2 blockMax = blockMin + glm::vec2(1.0f);
+				const glm::vec2 vertexPosition(
+					worldVertexPosition.x,
+					worldVertexPosition.z
+				);
+				const glm::vec2 distanceFromBlock = glm::max(
+					glm::max(blockMin - vertexPosition, vertexPosition - blockMax),
+					glm::vec2(0.0f)
+				);
+				const float distance = glm::length(distanceFromBlock);
+				if (distance < nearestShoreDistance)
+				{
+					nearestShoreDistance = distance;
+				}
+				if (nearestShoreDistance <= 0.0f)
+				{
+					cache.emplace(cacheKey, 1.0f);
+					return 1.0f;
+				}
+			}
+		}
+
+		const float proximity = 1.0f - glm::clamp(
+			nearestShoreDistance
+				/ static_cast<float>(WATER_SHORE_DISTANCE_BLOCKS),
+			0.0f,
+			1.0f
+		);
+		cache.emplace(cacheKey, proximity);
+		return proximity;
+	}
+
+	uint8_t Chunk::calculateFaceAoSignature(
+		g::Direction direction,
+		BlockPos worldBlockPos,
+		int lodScale)
+	{
+		if (lodScale != 1)
+		{
+			return 0;
+		}
+
+		const int vertexPositionIndex =
+			g::Quad::vertexPositionIndexMap.at(direction);
+		uint8_t signature = 0;
+		for (int vertex = 0; vertex < g::Quad::vertexCount; ++vertex)
+		{
+			const glm::vec3 vertexPosition(
+				g::Quad::vertexPositions[vertexPositionIndex + vertex * 3],
+				g::Quad::vertexPositions[vertexPositionIndex + vertex * 3 + 1],
+				g::Quad::vertexPositions[vertexPositionIndex + vertex * 3 + 2]);
+			const int level = static_cast<int>(std::round(
+				calculateVertexAo(
+					direction,
+					worldBlockPos,
+					vertexPosition,
+					glm::vec3(1.0f),
+					lodScale) * 3.0f));
+			signature |= static_cast<uint8_t>(level << (vertex * 2));
+		}
+		return signature;
+	}
+
+	float Chunk::calculateVertexAo(
+		g::Direction direction,
+		BlockPos worldBlockPos,
+		const glm::vec3& vertexPosition,
+		const glm::vec3& scale,
+		int lodScale)
+	{
+		// Coarse LOD cells represent many blocks and do not have enough local
+		// detail for meaningful corner AO.
+		if (lodScale != 1)
+		{
+			return 1.0f;
+		}
+
+		const BlockPos normal = g::getNormalI(direction);
+		BlockPos tangentA;
+		BlockPos tangentB;
+		switch (direction)
+		{
+		case g::Direction::FRONT:
+		case g::Direction::BACK:
+			tangentA = { vertexPosition.x == 0.0f ? -1 : 1, 0, 0 };
+			tangentB = { 0, vertexPosition.y == 0.0f ? -1 : 1, 0 };
+			break;
+		case g::Direction::RIGHT:
+		case g::Direction::LEFT:
+			tangentA = { 0, 0, vertexPosition.z == 0.0f ? -1 : 1 };
+			tangentB = { 0, vertexPosition.y == 0.0f ? -1 : 1, 0 };
+			break;
+		case g::Direction::TOP:
+		case g::Direction::BOTTOM:
+			tangentA = { vertexPosition.x == 0.0f ? -1 : 1, 0, 0 };
+			tangentB = { 0, 0, vertexPosition.z == 0.0f ? -1 : 1 };
+			break;
+		default:
+			return 1.0f;
+		}
+
+		// For the far corner of a greedy quad, sample around the block at that
+		// end rather than around the quad's origin block.
+		BlockPos cornerBlock = worldBlockPos;
+		if (normal.x == 0 && vertexPosition.x != 0.0f)
+		{
+			cornerBlock.x += static_cast<int>(scale.x) - 1;
+		}
+		if (normal.y == 0 && vertexPosition.y != 0.0f)
+		{
+			cornerBlock.y += static_cast<int>(scale.y) - 1;
+		}
+		if (normal.z == 0 && vertexPosition.z != 0.0f)
+		{
+			cornerBlock.z += static_cast<int>(scale.z) - 1;
+		}
+
+		const BlockPos outside = cornerBlock + normal;
+		auto isWorldBlockSolid = [this](const BlockPos& worldPos)
+		{
+			const BlockPos localPos = worldPos - m_origin;
+			return isSolid(isBlockInBounds(localPos)
+				? getBlock(localPos)
+				: m_world->getBlock(worldPos));
+		};
+		const bool sideA = isWorldBlockSolid(outside + tangentA);
+		const bool sideB = isWorldBlockSolid(outside + tangentB);
+		const bool corner = isWorldBlockSolid(outside + tangentA + tangentB);
+
+		const int occlusion = sideA && sideB
+			? 3
+			: static_cast<int>(sideA) + static_cast<int>(sideB) + static_cast<int>(corner);
+		return static_cast<float>(3 - occlusion) / 3.0f;
 	}
 
 	void Chunk::putBlock(Block block)
@@ -799,7 +1140,8 @@ namespace voxel_game::world
 
 		if (blockTypeId == BlockTypeId::WATER)
 		{
-			return isTransparent(neighbour) && neighbour != BlockTypeId::WATER;
+			return isTransparent(neighbour)
+				&& neighbour != BlockTypeId::WATER;
 		}
 
 		return isTransparent(neighbour);
